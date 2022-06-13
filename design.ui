@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>666</width>
+    <height>588</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="tab_nomenclature">
+       <attribute name="title">
+        <string>Номенклатура</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_2">
+        <item row="1" column="0">
+         <widget class="QTableWidget" name="tableWidget_nomenclature"/>
+        </item>
+        <item row="2" column="0">
+         <widget class="QPushButton" name="pushButton_add_good">
+          <property name="text">
+           <string>Добавить номенклатуру</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_orders">
+       <attribute name="title">
+        <string>Заказы</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_3">
+        <item row="0" column="0">
+         <widget class="QTableWidget" name="tableWidget_orders"/>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_5_grade">
+       <attribute name="title">
+        <string>5 класс</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_4">
+        <item row="0" column="0">
+         <widget class="QTableWidget" name="tableWidget_5_grade"/>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_7_grade">
+       <attribute name="title">
+        <string>7 класс</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_5">
+        <item row="0" column="0">
+         <widget class="QTableWidget" name="tableWidget_7_grade"/>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_10_grade">
+       <attribute name="title">
+        <string>10 класс</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_6">
+        <item row="0" column="0">
+         <widget class="QTableWidget" name="tableWidget_10_grade"/>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_12_grade">
+       <attribute name="title">
+        <string>12 класс</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_7">
+        <item row="0" column="0">
+         <widget class="QTableWidget" name="tableWidget_12_grade"/>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_12_1_grade">
+       <attribute name="title">
+        <string>12.1 класс</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_8">
+        <item row="0" column="0">
+         <widget class="QTableWidget" name="tableWidget_12_1_grade"/>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
