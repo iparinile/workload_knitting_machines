@@ -5,7 +5,8 @@ from PyQt5.QtWidgets import QTableWidgetItem
 
 import create_good
 import design
-from queries import make_session, get_all_nomenclature, get_specifications_for_good, create_nomenclature
+from queries import make_session, get_all_nomenclature, get_specifications_for_good, create_nomenclature, \
+    get_grouped_loading_of_machines, get_info_about_specification_in_order
 
 
 class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
@@ -63,6 +64,54 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 time_references_item.setData(2, nomenclature.time_references)
                 self.tableWidget_nomenclature.setItem(row_counter, 4, time_references_item)
                 row_counter += 1
+
+        self.get_loading_of_machines()
+
+    def get_loading_of_machines(self):
+        all_loading_machines_data = get_grouped_loading_of_machines(self.session)
+        for machines_id in all_loading_machines_data.keys():
+            machine_load_data = all_loading_machines_data[machines_id]
+            machines_sheet = self.tableWidget_5_grade  # Придумать заглушку
+            if machines_id == 1:
+                machines_sheet = self.tableWidget_5_grade
+            elif machines_id == 2:
+                machines_sheet = self.tableWidget_7_grade
+            elif machines_id == 3:
+                machines_sheet = self.tableWidget_10_grade
+            elif machines_id == 4:
+                machines_sheet = self.tableWidget_12_grade
+            elif machines_id == 5:
+                machines_sheet = self.tableWidget_12_1_grade
+
+            max_row_counter = 0  # Поиск наибольшего количества строк
+            for work_data in machine_load_data:
+                if len(work_data["load_machine_data"]) > max_row_counter:
+                    max_row_counter = len(work_data["load_machine_data"])
+            column_counter = len(machine_load_data)
+
+            machines_sheet.setRowCount(max_row_counter)
+            machines_sheet.setColumnCount(column_counter)
+
+            column_headers = []
+            for db_date_load in machine_load_data:
+                column_headers.append(db_date_load['date'].strftime('%d.%m.%Y'))
+
+            machines_sheet.setHorizontalHeaderLabels(column_headers)
+
+            column_counter = 0
+            for work_date_info in machine_load_data:
+                row_counter = 0
+                for db_load_machine in work_date_info['load_machine_data']:
+                    load_data_item = QTableWidgetItem()
+                    specification_info = get_info_about_specification_in_order(self.session, db_load_machine.specification_in_order_id)
+                    load_data_item.setData(2, f"Изделие {specification_info['specification_name']}, "
+                                              f"{db_load_machine.time_references}")
+                    machines_sheet.setItem(row_counter, column_counter, load_data_item)
+
+                    row_counter += 1
+                column_counter += 1
+
+
 
     def open_create_good_widget(self):
         self.create_good_widget = CreateNomenclatureWidget()

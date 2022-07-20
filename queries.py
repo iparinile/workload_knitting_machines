@@ -134,6 +134,18 @@ def create_load_knitting_machines(
     return new_load_knitting_machines
 
 
+def get_busy_minutes(session: Session, date_load_id: int, specification_in_order_id: int) -> int:
+    query = session.query(DBLoadKnittingMachines)
+    query = query.filter(DBLoadKnittingMachines.date_load_id == date_load_id)
+    query = query.filter(DBLoadKnittingMachines.specification_in_order_id == specification_in_order_id)
+    result: List[DBLoadKnittingMachines] = query.all()
+    total_load = 0
+    for load in result:
+        total_load += load.time_references
+
+    return total_load
+
+
 def create_order_with_date_load(session: Session, order_id: int, specification_id: int, amount: int):
     current_date = date.today()
     db_order = get_order_by_one_c_id(session, order_id)
@@ -143,28 +155,92 @@ def create_order_with_date_load(session: Session, order_id: int, specification_i
 
     db_specification_in_order = create_specification_in_order(session, db_order.id, specification_id, amount)
 
-    tomorrow_date = current_date + timedelta(days=1)
     db_nomenclature = get_nomenclature_by_specification_id(session, specification_id)
 
     knitting_machine_name = db_nomenclature.article.split("-")[0]
     db_knitting_machine = get_knitting_machine_by_name(session, knitting_machine_name)
 
     time_references = db_nomenclature.time_references * db_specification_in_order.amount
-    amount = db_specification_in_order.amount
 
     while time_references != 0:
-        db_date_load = get_date_load(session, tomorrow_date, db_knitting_machine.id)
+        current_date = current_date + timedelta(days=1)  # Смотрим следующий день и выбираем его текущим
+        db_date_load = get_date_load(session, current_date, db_knitting_machine.id)
 
         if db_date_load is None:
-            db_date_load = create_date_load(session, tomorrow_date, db_knitting_machine.id)
+            db_date_load = create_date_load(session, current_date, db_knitting_machine.id)
 
-        if time_references < db_date_load.total_load:
+        busy_minutes = get_busy_minutes(session, db_date_load.id, specification_id)
+
+        total_load = db_date_load.total_load - busy_minutes
+
+        if time_references <= total_load:
             create_load_knitting_machines(session, db_specification_in_order.id, db_date_load.id, time_references)
-            pass
+            time_references = 0
+        else:
+            sewing_time = 0
+            for _ in range(amount):
+                if db_nomenclature.time_references > total_load:
+                    break
+                sewing_time += db_nomenclature.time_references
+                time_references -= db_nomenclature.time_references
+                total_load -= db_nomenclature.time_references
 
-            a = 2
+            if sewing_time != 0:
+                create_load_knitting_machines(session, db_specification_in_order.id, db_date_load.id,
+                                              time_references)
+
+
+def get_load_knitting_machines_by_date_load_id(session: Session, date_load_id: int) -> List[DBLoadKnittingMachines]:
+    query = session.query(DBLoadKnittingMachines)
+    query = query.filter(DBLoadKnittingMachines.date_load_id == date_load_id)
+    return query.all()
+
+
+def get_grouped_loading_of_machines(session: Session) -> dict:
+    query: List[DBDateLoads] = session.query(DBDateLoads).all()
+    loading_machines = dict()
+    for db_date_load in query:
+        if db_date_load.knitting_machine_id not in loading_machines.keys():
+            loading_machines[db_date_load.knitting_machine_id] = []
+
+        load_machine_data = get_load_knitting_machines_by_date_load_id(session, db_date_load.id)
+        loading_machines[db_date_load.knitting_machine_id].append({
+            "date": db_date_load.date,
+            "total_load": db_date_load.total_load,
+            "load_machine_data": load_machine_data
+        })
+
+    return loading_machines
+
+
+def get_order_by_id(session: Session, order_id: int) -> DBOrders:
+    query = session.query(DBOrders).filter(DBOrders.id == order_id)
+    return query.first()
+
+
+def get_specification_by_id(session: Session, specification_id: int) -> DBSpecifications:
+    query = session.query(DBSpecifications).filter(DBSpecifications.id == specification_id)
+    return query.first()
+
+
+def get_info_about_specification_in_order(session: Session, specification_in_order_id: int):
+    query = session.query(DBSpecificationInOrders).filter(DBSpecificationInOrders.id == specification_in_order_id)
+    db_specification_in_order: DBSpecificationInOrders = query.first()
+    db_order = get_order_by_id(session, db_specification_in_order.order_id)
+    db_nomenclature = get_nomenclature_by_specification_id(session, db_specification_in_order.specification_id)
+    db_specification = get_specification_by_id(session, db_specification_in_order.specification_id)
+
+    specification_info_to_view = {
+        "order_number": db_order.one_c_id,
+        "nomenclature_name": db_nomenclature.name,
+        "article": db_nomenclature.article,
+        "specification_name": db_specification.name
+    }
+
+    return specification_info_to_view
 
 
 if __name__ == '__main__':
     test_session = make_session()
-    create_order_with_date_load(test_session, 1, 1, 2)
+    # create_order_with_date_load(test_session, 1, 1, 2)
+    get_grouped_loading_of_machines(test_session)

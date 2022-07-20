@@ -54,7 +54,7 @@ class DBDateLoads(Base):
     __tablename__ = "Date_loads"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    date = Column(Date, unique=True)
+    date = Column(Date)
     total_load = Column(Integer, nullable=False)
     knitting_machine_id = Column(Integer, ForeignKey('Knitting_machines.id'), nullable=False)
 
