@@ -4,67 +4,52 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QTableWidgetItem
 
 import create_good
+
+import create_order_widget
 import design
 from queries import make_session, get_all_nomenclature, get_specifications_for_good, create_nomenclature, \
-    get_grouped_loading_of_machines, get_info_about_specification_in_order
+    get_grouped_loading_of_machines, get_info_about_specification_in_order, get_order_by_one_c_id, create_order, \
+    create_order_with_date_load
 
 
 class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def __init__(self):
         self.create_good_widget = None
+        self.create_order_widget = None
         self.new_good_data = None
         super().__init__()
         self.setupUi(self)  # Это нужно для инициализации нашего дизайна
 
         self.pushButton_add_good.clicked.connect(self.open_create_good_widget)
+        # self.pushButton_add_specification.clicked.connect()
+        self.pushButton_add_order_to_select_nomenclature.clicked.connect(self.open_create_order_widget)
 
         self.session = make_session()
 
-        nomenclatures = get_all_nomenclature(self.session)
-        row_counter = 0
-        nomenclature_columns = ["id", "Артикул", "Наименование", "Характеристика", "Время изготовления, мин."]
-        self.tableWidget_nomenclature.setColumnCount(len(nomenclature_columns))
-        self.tableWidget_nomenclature.setHorizontalHeaderLabels(nomenclature_columns)
+        self.get_all_nomenclature()
+        self.tableWidget_nomenclature.resizeColumnsToContents()
+        self.get_loading_of_machines()
 
-        row_count_table = 0
-        for nomenclature in nomenclatures:
-            specifications = get_specifications_for_good(self.session, nomenclature.id)
-            if len(specifications) == 0:
-                specifications = [""]
-            for _ in specifications:
-                row_count_table += 1
+    def open_create_order_widget(self):
+        self.create_order_widget = CreateOrderWidget()
 
-        self.tableWidget_nomenclature.setRowCount(row_count_table)
+        self.create_order_widget.show()
 
-        for nomenclature in nomenclatures:
-            specifications = get_specifications_for_good(self.session, nomenclature.id)
-            if len(specifications) == 0:
-                specifications = [""]
-            for specification in specifications:
-                article_item = QTableWidgetItem()
-                article_item.setData(2, nomenclature.id)
-                self.tableWidget_nomenclature.setItem(row_counter, 0, article_item)
+        self.create_order_widget.pushButton_save.clicked.connect(self.create_new_order)
 
-                article_item = QTableWidgetItem()
-                article_item.setData(2, nomenclature.article)
-                self.tableWidget_nomenclature.setItem(row_counter, 1, article_item)
+    def create_new_order(self):
+        current_row_index = self.tableWidget_nomenclature.currentRow()
+        specification_id = self.tableWidget_nomenclature.item(current_row_index, 3).data(100)
+        order_one_c_id = self.create_order_widget.lineEdit_order_id.text()
+        specification_amount = int(self.create_order_widget.lineEdit_amount.text())
 
-                name_item = QTableWidgetItem()
-                name_item.setData(2, nomenclature.name)
-                self.tableWidget_nomenclature.setItem(row_counter, 2, name_item)
+        db_order = get_order_by_one_c_id(self.session, order_one_c_id)
 
-                article_item = QTableWidgetItem()
-                if specification == "":
-                    article_item.setData(2, "")
-                else:
-                    article_item.setData(2, specification.name)
-                self.tableWidget_nomenclature.setItem(row_counter, 3, article_item)
+        if db_order is None:
+            db_order = create_order(self.session, order_one_c_id)
 
-                time_references_item = QTableWidgetItem()
-                time_references_item.setData(2, nomenclature.time_references)
-                self.tableWidget_nomenclature.setItem(row_counter, 4, time_references_item)
-                row_counter += 1
-
+        create_order_with_date_load(self.session, db_order.id, specification_id, specification_amount)
+        self.create_order_widget.hide()
         self.get_loading_of_machines()
 
     def get_loading_of_machines(self):
@@ -103,15 +88,68 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 row_counter = 0
                 for db_load_machine in work_date_info['load_machine_data']:
                     load_data_item = QTableWidgetItem()
-                    specification_info = get_info_about_specification_in_order(self.session, db_load_machine.specification_in_order_id)
-                    load_data_item.setData(2, f"Изделие {specification_info['specification_name']}, "
-                                              f"{db_load_machine.time_references}")
+                    specification_info = get_info_about_specification_in_order(
+                        self.session,
+                        db_load_machine.specification_in_order_id)
+                    load_data_item.setData(2,
+                                           f"Заказ {specification_info['order_number']}, "
+                                           f"{specification_info['article']} {specification_info['nomenclature_name']}"
+                                           f", {specification_info['specification_name']}, "
+                                           f"время - {db_load_machine.time_references} минут")
                     machines_sheet.setItem(row_counter, column_counter, load_data_item)
 
                     row_counter += 1
                 column_counter += 1
 
+            machines_sheet.resizeColumnsToContents()
 
+    def get_all_nomenclature(self):
+        nomenclatures = get_all_nomenclature(self.session)
+        row_counter = 0
+        nomenclature_columns = ["id", "Артикул", "Наименование", "Характеристика", "Время изготовления, мин."]
+        self.tableWidget_nomenclature.setColumnCount(len(nomenclature_columns))
+        self.tableWidget_nomenclature.setHorizontalHeaderLabels(nomenclature_columns)
+
+        row_count_table = 0
+        for nomenclature in nomenclatures:
+            specifications = get_specifications_for_good(self.session, nomenclature.id)
+            if len(specifications) == 0:
+                specifications = [""]
+            for _ in specifications:
+                row_count_table += 1
+
+        self.tableWidget_nomenclature.setRowCount(row_count_table)
+
+        for nomenclature in nomenclatures:
+            specifications = get_specifications_for_good(self.session, nomenclature.id)
+            if len(specifications) == 0:
+                specifications = [""]
+            for specification in specifications:
+                article_item = QTableWidgetItem()
+                article_item.setData(2, nomenclature.id)
+                self.tableWidget_nomenclature.setItem(row_counter, 0, article_item)
+
+                article_item = QTableWidgetItem()
+                article_item.setData(2, nomenclature.article)
+                self.tableWidget_nomenclature.setItem(row_counter, 1, article_item)
+
+                name_item = QTableWidgetItem()
+                name_item.setData(2, nomenclature.name)
+                name_item.setData(100, nomenclature.id)
+                self.tableWidget_nomenclature.setItem(row_counter, 2, name_item)
+
+                article_item = QTableWidgetItem()
+                if specification == "":
+                    article_item.setData(2, "")
+                else:
+                    article_item.setData(2, specification.name)
+                    article_item.setData(100, specification.id)
+                self.tableWidget_nomenclature.setItem(row_counter, 3, article_item)
+
+                time_references_item = QTableWidgetItem()
+                time_references_item.setData(2, nomenclature.time_references)
+                self.tableWidget_nomenclature.setItem(row_counter, 4, time_references_item)
+                row_counter += 1
 
     def open_create_good_widget(self):
         self.create_good_widget = CreateNomenclatureWidget()
@@ -135,9 +173,16 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         )
 
         self.create_good_widget.hide()
+        self.get_all_nomenclature()
 
 
 class CreateNomenclatureWidget(QtWidgets.QWidget, create_good.Ui_Form):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+
+
+class CreateOrderWidget(QtWidgets.QWidget, create_order_widget.Ui_Form):
     def __init__(self):
         super().__init__()
         self.setupUi(self)

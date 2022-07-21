@@ -98,6 +98,18 @@ def get_order_by_one_c_id(session: Session, order_id: int) -> DBOrders:
     return query.first()
 
 
+def create_specification(session: Session, article: str, name: str, nomenclature_id: int) -> DBSpecifications:
+    new_specification = DBSpecifications(
+        article=article,
+        name=name,
+        nomenclature_id=nomenclature_id
+    )
+    session.add(new_specification)
+    session.commit()
+
+    return new_specification
+
+
 def create_specification_in_order(
         session: Session,
         order_id: int,
@@ -134,10 +146,9 @@ def create_load_knitting_machines(
     return new_load_knitting_machines
 
 
-def get_busy_minutes(session: Session, date_load_id: int, specification_in_order_id: int) -> int:
+def get_busy_minutes(session: Session, date_load_id: int) -> int:
     query = session.query(DBLoadKnittingMachines)
     query = query.filter(DBLoadKnittingMachines.date_load_id == date_load_id)
-    query = query.filter(DBLoadKnittingMachines.specification_in_order_id == specification_in_order_id)
     result: List[DBLoadKnittingMachines] = query.all()
     total_load = 0
     for load in result:
@@ -169,11 +180,13 @@ def create_order_with_date_load(session: Session, order_id: int, specification_i
         if db_date_load is None:
             db_date_load = create_date_load(session, current_date, db_knitting_machine.id)
 
-        busy_minutes = get_busy_minutes(session, db_date_load.id, specification_id)
+        busy_minutes = get_busy_minutes(session, db_date_load.id)
 
         total_load = db_date_load.total_load - busy_minutes
 
-        if time_references <= total_load:
+        if total_load <= 0:
+            continue
+        elif time_references <= total_load:
             create_load_knitting_machines(session, db_specification_in_order.id, db_date_load.id, time_references)
             time_references = 0
         else:
@@ -186,8 +199,7 @@ def create_order_with_date_load(session: Session, order_id: int, specification_i
                 total_load -= db_nomenclature.time_references
 
             if sewing_time != 0:
-                create_load_knitting_machines(session, db_specification_in_order.id, db_date_load.id,
-                                              time_references)
+                create_load_knitting_machines(session, db_specification_in_order.id, db_date_load.id, sewing_time)
 
 
 def get_load_knitting_machines_by_date_load_id(session: Session, date_load_id: int) -> List[DBLoadKnittingMachines]:
