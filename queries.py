@@ -4,9 +4,9 @@ from typing import List
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from db import DBNomenclature, DBSpecifications, DBKnittingMachines, DBDateLoads, DBOrders, DBSpecificationInOrders, \
+from db import DBNomenclature, DBCharacteristic, DBKnittingMachines, DBDateLoads, DBOrders, DBCharacteristicInOrders, \
     DBLoadKnittingMachines
-from exceptions import SpecificationNotFoundException
+from exceptions import CharacteristicNotFoundException
 
 
 def make_session():
@@ -37,22 +37,22 @@ def get_all_nomenclature(session: Session) -> List[DBNomenclature]:
     return query
 
 
-def get_specifications_for_good(session: Session, good_id: int) -> List[DBSpecifications]:
-    query = session.query(DBSpecifications)
-    query = query.filter(DBSpecifications.nomenclature_id == good_id)
+def get_characteristic_for_good(session: Session, good_id: int) -> List[DBCharacteristic]:
+    query = session.query(DBCharacteristic)
+    query = query.filter(DBCharacteristic.nomenclature_id == good_id)
     query = query.all()
     return query
 
 
-def get_nomenclature_by_specification_id(session: Session, specification_id: int) -> DBNomenclature:
-    query = session.query(DBSpecifications)
-    query = query.filter(DBSpecifications.id == specification_id)
-    db_specification: DBSpecifications = query.first()
-    if db_specification is None:
-        raise SpecificationNotFoundException
+def get_nomenclature_by_characteristic_id(session: Session, characteristic_id: int) -> DBNomenclature:
+    query = session.query(DBCharacteristic)
+    query = query.filter(DBCharacteristic.id == characteristic_id)
+    db_characteristic: DBCharacteristic = query.first()
+    if db_characteristic is None:
+        raise CharacteristicNotFoundException
 
     query = session.query(DBNomenclature)
-    query = query.filter(DBNomenclature.id == db_specification.nomenclature_id)
+    query = query.filter(DBNomenclature.id == db_characteristic.nomenclature_id)
     return query.first()
 
 
@@ -69,10 +69,15 @@ def get_date_load(session: Session, selected_date: date, knitting_machine_id: id
     return query.first()
 
 
-def create_date_load(session: Session, selected_date: date, knitting_machine_id: id) -> DBDateLoads:
+def create_date_load(
+        session: Session,
+        selected_date: date,
+        knitting_machine_id: id,
+        total_load: int = 720
+) -> DBDateLoads:
     new_date_load = DBDateLoads(
         date=selected_date,
-        total_load=480,
+        total_load=total_load,
         knitting_machine_id=knitting_machine_id
     )
 
@@ -98,45 +103,44 @@ def get_order_by_one_c_id(session: Session, order_id: int) -> DBOrders:
     return query.first()
 
 
-def create_specification(session: Session, article: str, name: str, nomenclature_id: int) -> DBSpecifications:
-    new_specification = DBSpecifications(
-        article=article,
+def create_characteristic(session: Session, name: str, nomenclature_id: int) -> DBCharacteristic:
+    new_characteristic = DBCharacteristic(
         name=name,
         nomenclature_id=nomenclature_id
     )
-    session.add(new_specification)
+    session.add(new_characteristic)
     session.commit()
 
-    return new_specification
+    return new_characteristic
 
 
-def create_specification_in_order(
+def create_characteristic_in_order(
         session: Session,
         order_id: int,
-        specification_id: int,
+        characteristic_id: int,
         amount: int
-) -> DBSpecificationInOrders:
-    new_specification_in_order = DBSpecificationInOrders(
+) -> DBCharacteristicInOrders:
+    new_characteristic_in_order = DBCharacteristicInOrders(
         order_id=order_id,
-        specification_id=specification_id,
+        characteristic_id=characteristic_id,
         amount=amount
     )
 
-    session.add(new_specification_in_order)
+    session.add(new_characteristic_in_order)
     session.commit()
 
-    return new_specification_in_order
+    return new_characteristic_in_order
 
 
 def create_load_knitting_machines(
         session: Session,
-        specification_in_order_id: int,
+        characteristic_in_order_id: int,
         date_load_id: int,
         time_references: int
 ) -> DBLoadKnittingMachines:
     new_load_knitting_machines = DBLoadKnittingMachines(
         date_load_id=date_load_id,
-        specification_in_order_id=specification_in_order_id,
+        characteristic_in_order_id=characteristic_in_order_id,
         time_references=time_references
     )
 
@@ -157,21 +161,21 @@ def get_busy_minutes(session: Session, date_load_id: int) -> int:
     return total_load
 
 
-def create_order_with_date_load(session: Session, order_id: int, specification_id: int, amount: int):
+def create_order_with_date_load(session: Session, order_id: int, characteristic_id: int, amount: int):
     current_date = date.today()
     db_order = get_order_by_one_c_id(session, order_id)
 
     if db_order is None:
         db_order = create_order(session, order_id)
 
-    db_specification_in_order = create_specification_in_order(session, db_order.id, specification_id, amount)
+    db_characteristic_in_order = create_characteristic_in_order(session, db_order.id, characteristic_id, amount)
 
-    db_nomenclature = get_nomenclature_by_specification_id(session, specification_id)
+    db_nomenclature = get_nomenclature_by_characteristic_id(session, characteristic_id)
 
     knitting_machine_name = db_nomenclature.article.split("-")[0]
     db_knitting_machine = get_knitting_machine_by_name(session, knitting_machine_name)
 
-    time_references = db_nomenclature.time_references * db_specification_in_order.amount
+    time_references = db_nomenclature.time_references * db_characteristic_in_order.amount
 
     while time_references != 0:
         current_date = current_date + timedelta(days=1)  # Смотрим следующий день и выбираем его текущим
@@ -187,7 +191,7 @@ def create_order_with_date_load(session: Session, order_id: int, specification_i
         if total_load <= 0:
             continue
         elif time_references <= total_load:
-            create_load_knitting_machines(session, db_specification_in_order.id, db_date_load.id, time_references)
+            create_load_knitting_machines(session, db_characteristic_in_order.id, db_date_load.id, time_references)
             time_references = 0
         else:
             sewing_time = 0
@@ -199,7 +203,7 @@ def create_order_with_date_load(session: Session, order_id: int, specification_i
                 total_load -= db_nomenclature.time_references
 
             if sewing_time != 0:
-                create_load_knitting_machines(session, db_specification_in_order.id, db_date_load.id, sewing_time)
+                create_load_knitting_machines(session, db_characteristic_in_order.id, db_date_load.id, sewing_time)
 
 
 def get_load_knitting_machines_by_date_load_id(session: Session, date_load_id: int) -> List[DBLoadKnittingMachines]:
@@ -230,26 +234,26 @@ def get_order_by_id(session: Session, order_id: int) -> DBOrders:
     return query.first()
 
 
-def get_specification_by_id(session: Session, specification_id: int) -> DBSpecifications:
-    query = session.query(DBSpecifications).filter(DBSpecifications.id == specification_id)
+def get_characteristic_by_id(session: Session, characteristic_id: int) -> DBCharacteristic:
+    query = session.query(DBCharacteristic).filter(DBCharacteristic.id == characteristic_id)
     return query.first()
 
 
-def get_info_about_specification_in_order(session: Session, specification_in_order_id: int):
-    query = session.query(DBSpecificationInOrders).filter(DBSpecificationInOrders.id == specification_in_order_id)
-    db_specification_in_order: DBSpecificationInOrders = query.first()
-    db_order = get_order_by_id(session, db_specification_in_order.order_id)
-    db_nomenclature = get_nomenclature_by_specification_id(session, db_specification_in_order.specification_id)
-    db_specification = get_specification_by_id(session, db_specification_in_order.specification_id)
+def get_info_about_characteristic_in_order(session: Session, characteristic_in_order_id: int):
+    query = session.query(DBCharacteristicInOrders).filter(DBCharacteristicInOrders.id == characteristic_in_order_id)
+    db_characteristic_in_order: DBCharacteristicInOrders = query.first()
+    db_order = get_order_by_id(session, db_characteristic_in_order.order_id)
+    db_nomenclature = get_nomenclature_by_characteristic_id(session, db_characteristic_in_order.characteristic_id)
+    db_characteristic = get_characteristic_by_id(session, db_characteristic_in_order.characteristic_id)
 
-    specification_info_to_view = {
+    characteristic_info_to_view = {
         "order_number": db_order.one_c_id,
         "nomenclature_name": db_nomenclature.name,
         "article": db_nomenclature.article,
-        "specification_name": db_specification.name
+        "characteristic_name": db_characteristic.name
     }
 
-    return specification_info_to_view
+    return characteristic_info_to_view
 
 
 if __name__ == '__main__':

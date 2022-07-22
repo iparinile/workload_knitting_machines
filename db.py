@@ -17,11 +17,10 @@ class DBNomenclature(Base):
     time_references = Column(Integer, nullable=False)
 
 
-class DBSpecifications(Base):
-    __tablename__ = "Specifications"
+class DBCharacteristic(Base):
+    __tablename__ = "Characteristic"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    article = Column(String(255), unique=True, nullable=False)
     name = Column(String(255), nullable=False, unique=False)
     nomenclature_id = Column(Integer, ForeignKey('Nomenclature.id'), nullable=False)
 
@@ -33,12 +32,12 @@ class DBKnittingMachines(Base):
     name = Column(String(255), unique=True, nullable=False)
 
 
-class DBSpecificationInOrders(Base):
-    __tablename__ = "Specification_in_orders"
+class DBCharacteristicInOrders(Base):
+    __tablename__ = "Characteristic_in_orders"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     order_id = Column(Integer, ForeignKey('Orders.id'), nullable=False)
-    specification_id = Column(Integer, ForeignKey('Specifications.id'), nullable=False)
+    characteristic_id = Column(Integer, ForeignKey('Characteristic.id'), nullable=False)
     amount = Column(Integer, nullable=False)
 
 
@@ -64,5 +63,5 @@ class DBLoadKnittingMachines(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     date_load_id = Column(Integer, ForeignKey('Date_loads.id'), nullable=False)
-    specification_in_order_id = Column(Integer, ForeignKey('Specification_in_orders.id'), nullable=False)
+    characteristic_in_order_id = Column(Integer, ForeignKey('Characteristic_in_orders.id'), nullable=False)
     time_references = Column(Integer, nullable=False)

@@ -17,6 +17,15 @@
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
      <widget class="QTabWidget" name="tabWidget">
+      <property name="cursor">
+       <cursorShape>ArrowCursor</cursorShape>
+      </property>
+      <property name="contextMenuPolicy">
+       <enum>Qt::DefaultContextMenu</enum>
+      </property>
+      <property name="autoFillBackground">
+       <bool>false</bool>
+      </property>
       <property name="currentIndex">
        <number>0</number>
       </property>
@@ -33,7 +42,11 @@
          </widget>
         </item>
         <item row="1" column="0" colspan="3">
-         <widget class="QTableWidget" name="tableWidget_nomenclature"/>
+         <widget class="QTableWidget" name="tableWidget_nomenclature">
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+         </widget>
         </item>
         <item row="2" column="0">
          <widget class="QPushButton" name="pushButton_add_good">
@@ -43,9 +56,9 @@
          </widget>
         </item>
         <item row="2" column="1">
-         <widget class="QPushButton" name="pushButton_add_specification">
+         <widget class="QPushButton" name="pushButton_add_characteristic">
           <property name="text">
-           <string>Добавить спецификацию</string>
+           <string>Добавить характеристику</string>
           </property>
          </widget>
         </item>
@@ -57,7 +70,11 @@
        </attribute>
        <layout class="QGridLayout" name="gridLayout_3">
         <item row="0" column="0">
-         <widget class="QTableWidget" name="tableWidget_orders"/>
+         <widget class="QTableWidget" name="tableWidget_orders">
+          <property name="sortingEnabled">
+           <bool>true</bool>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>
@@ -103,7 +120,7 @@
       </widget>
       <widget class="QWidget" name="tab_12_1_grade">
        <attribute name="title">
-        <string>12.1 класс</string>
+        <string>12.2 класс</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_8">
         <item row="0" column="0">

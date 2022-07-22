@@ -1,2 +1,2 @@
-class SpecificationNotFoundException(Exception):
+class CharacteristicNotFoundException(Exception):
     pass
