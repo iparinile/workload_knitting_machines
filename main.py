@@ -6,22 +6,24 @@ from PyQt5.QtWidgets import QTableWidgetItem
 import create_good
 
 import create_order_widget
+import create_specification_widget
 import design
 from queries import make_session, get_all_nomenclature, get_specifications_for_good, create_nomenclature, \
     get_grouped_loading_of_machines, get_info_about_specification_in_order, get_order_by_one_c_id, create_order, \
-    create_order_with_date_load
+    create_order_with_date_load, create_specification
 
 
 class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def __init__(self):
         self.create_good_widget = None
+        self.create_specification_widget = None
         self.create_order_widget = None
         self.new_good_data = None
         super().__init__()
         self.setupUi(self)  # Это нужно для инициализации нашего дизайна
 
         self.pushButton_add_good.clicked.connect(self.open_create_good_widget)
-        # self.pushButton_add_specification.clicked.connect()
+        self.pushButton_add_specification.clicked.connect(self.open_create_specification_widget)
         self.pushButton_add_order_to_select_nomenclature.clicked.connect(self.open_create_order_widget)
 
         self.session = make_session()
@@ -29,6 +31,26 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.get_all_nomenclature()
         self.tableWidget_nomenclature.resizeColumnsToContents()
         self.get_loading_of_machines()
+
+    def open_create_specification_widget(self):
+        self.create_specification_widget = CreateSpecificationWidget()
+
+        self.create_specification_widget.show()
+
+        self.create_specification_widget.pushButton_save.clicked.connect(self.create_new_specification)
+
+    def create_new_specification(self):
+        current_row_index = self.tableWidget_nomenclature.currentRow()
+        good_id = self.tableWidget_nomenclature.item(current_row_index, 2).data(100)
+        specification_article = self.create_specification_widget.lineEdit__specification_article.text()
+        specification_name = self.create_specification_widget.lineEdit__specification_name.text()
+
+        # Сделать проверку на наличие спецификации
+        # db_specification = get_order_by_one_c_id(self.session, order_one_c_id)
+
+        create_specification(self.session, specification_article, specification_name, good_id)
+        self.get_all_nomenclature()
+        self.create_specification_widget.hide()
 
     def open_create_order_widget(self):
         self.create_order_widget = CreateOrderWidget()
@@ -183,6 +205,12 @@ class CreateNomenclatureWidget(QtWidgets.QWidget, create_good.Ui_Form):
 
 
 class CreateOrderWidget(QtWidgets.QWidget, create_order_widget.Ui_Form):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+
+
+class CreateSpecificationWidget(QtWidgets.QWidget, create_specification_widget.Ui_Form):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
