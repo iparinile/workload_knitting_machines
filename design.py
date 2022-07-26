@@ -15,6 +15,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(666, 588)
+        MainWindow.setAutoFillBackground(False)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
@@ -22,6 +23,7 @@ class Ui_MainWindow(object):
         self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
         self.tabWidget.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
         self.tabWidget.setContextMenuPolicy(QtCore.Qt.DefaultContextMenu)
+        self.tabWidget.setAutoFillBackground(False)
         self.tabWidget.setObjectName("tabWidget")
         self.tab_nomenclature = QtWidgets.QWidget()
         self.tab_nomenclature.setObjectName("tab_nomenclature")
@@ -41,6 +43,15 @@ class Ui_MainWindow(object):
         self.pushButton_add_characteristic = QtWidgets.QPushButton(self.tab_nomenclature)
         self.pushButton_add_characteristic.setObjectName("pushButton_add_characteristic")
         self.gridLayout_2.addWidget(self.pushButton_add_characteristic, 2, 1, 1, 1)
+        self.label = QtWidgets.QLabel(self.tab_nomenclature)
+        self.label.setObjectName("label")
+        self.gridLayout_2.addWidget(self.label, 0, 0, 1, 1)
+        self.lineEdit_filter = QtWidgets.QLineEdit(self.tab_nomenclature)
+        self.lineEdit_filter.setObjectName("lineEdit_filter")
+        self.gridLayout_2.addWidget(self.lineEdit_filter, 0, 2, 1, 1)
+        self.comboBox = QtWidgets.QComboBox(self.tab_nomenclature)
+        self.comboBox.setObjectName("comboBox")
+        self.gridLayout_2.addWidget(self.comboBox, 0, 1, 1, 1)
         self.tabWidget.addTab(self.tab_nomenclature, "")
         self.tab_orders = QtWidgets.QWidget()
         self.tab_orders.setObjectName("tab_orders")
@@ -106,7 +117,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
-        self.tabWidget.setCurrentIndex(6)
+        self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -116,6 +127,7 @@ class Ui_MainWindow(object):
         self.tableWidget_nomenclature.setSortingEnabled(True)
         self.pushButton_add_good.setText(_translate("MainWindow", "Добавить номенклатуру"))
         self.pushButton_add_characteristic.setText(_translate("MainWindow", "Добавить характеристику"))
+        self.label.setText(_translate("MainWindow", "Поиск по"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_nomenclature), _translate("MainWindow", "Номенклатура"))
         self.tableWidget_orders.setSortingEnabled(True)
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_orders), _translate("MainWindow", "Заказы"))

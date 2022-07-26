@@ -1,6 +1,7 @@
 import sys
 
 from PyQt5 import QtWidgets
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QTableWidgetItem
 
 import create_good
@@ -32,6 +33,12 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.get_all_nomenclature()
         self.get_loading_of_machines()
         self.fill_orders_data()
+        self.tabWidget.setCurrentIndex(0)
+        self.lineEdit_filter.textChanged.connect(self.apply_filter)
+
+    def apply_filter(self):
+        a = self.tableWidget_nomenclature.findItems(self.lineEdit_filter.text(), Qt.MatchContains)
+        print(a)
 
     def fill_orders_data(self):
         db_characteristics_in_order = get_all_characteristics_in_order(self.session)
@@ -177,7 +184,7 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     max_row_counter = len(work_data["load_machine_data"])
             column_counter = len(machine_load_data)
 
-            machines_sheet.setRowCount(max_row_counter)
+            machines_sheet.setRowCount(max_row_counter + 1)
             machines_sheet.setColumnCount(column_counter)
 
             column_headers = []
@@ -188,7 +195,10 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
             column_counter = 0
             for work_date_info in machine_load_data:
-                row_counter = 0
+                total_load_item = QTableWidgetItem()
+                total_load_item.setData(2, work_date_info['total_load'])
+                machines_sheet.setItem(0, column_counter, total_load_item)
+                row_counter = 1
                 for db_load_machine in work_date_info['load_machine_data']:
                     load_data_item = QTableWidgetItem()
                     characteristic_info = get_info_about_characteristic_in_order(
@@ -299,5 +309,10 @@ class CreateCharacteristicWidget(QtWidgets.QWidget, create_characteristic_widget
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)  # Новый экземпляр QApplication
     window = MainWindow()  # Создаём объект класса ExampleApp
+    File = open("SyNet.qss", 'r')
+
+    with File:
+        qss = File.read()
+        app.setStyleSheet(qss)
     window.show()  # Показываем окно
     app.exec_()  # и запускаем приложение
