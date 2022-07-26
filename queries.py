@@ -1,3 +1,4 @@
+import datetime
 from datetime import date, timedelta
 from typing import List
 
@@ -163,12 +164,8 @@ def get_busy_minutes(session: Session, date_load_id: int) -> int:
 
 def create_order_with_date_load(session: Session, order_id: int, characteristic_id: int, amount: int):
     current_date = date.today()
-    db_order = get_order_by_one_c_id(session, order_id)
 
-    if db_order is None:
-        db_order = create_order(session, order_id)
-
-    db_characteristic_in_order = create_characteristic_in_order(session, db_order.id, characteristic_id, amount)
+    db_characteristic_in_order = create_characteristic_in_order(session, order_id, characteristic_id, amount)
 
     db_nomenclature = get_nomenclature_by_characteristic_id(session, characteristic_id)
 
@@ -234,12 +231,17 @@ def get_order_by_id(session: Session, order_id: int) -> DBOrders:
     return query.first()
 
 
+def get_all_orders(session: Session) -> DBOrders:
+    query = session.query(DBOrders)
+    return query.all()
+
+
 def get_characteristic_by_id(session: Session, characteristic_id: int) -> DBCharacteristic:
     query = session.query(DBCharacteristic).filter(DBCharacteristic.id == characteristic_id)
     return query.first()
 
 
-def get_info_about_characteristic_in_order(session: Session, characteristic_in_order_id: int):
+def get_info_about_characteristic_in_order(session: Session, characteristic_in_order_id: int) -> dict:
     query = session.query(DBCharacteristicInOrders).filter(DBCharacteristicInOrders.id == characteristic_in_order_id)
     db_characteristic_in_order: DBCharacteristicInOrders = query.first()
     db_order = get_order_by_id(session, db_characteristic_in_order.order_id)
@@ -250,10 +252,51 @@ def get_info_about_characteristic_in_order(session: Session, characteristic_in_o
         "order_number": db_order.one_c_id,
         "nomenclature_name": db_nomenclature.name,
         "article": db_nomenclature.article,
-        "characteristic_name": db_characteristic.name
+        "characteristic_name": db_characteristic.name,
+        "amount": db_characteristic_in_order.amount
     }
 
     return characteristic_info_to_view
+
+
+def get_all_characteristics_in_order(session: Session) -> List[DBCharacteristicInOrders]:
+    query = session.query(DBCharacteristicInOrders)
+    return query.all()
+
+
+def get_load_knitting_machines_filter_by_characteristic_in_order_id(
+        session: Session,
+        characteristic_in_order_id: int
+) -> List[DBLoadKnittingMachines]:
+    query = session.query(DBLoadKnittingMachines)
+    query = query.filter(DBLoadKnittingMachines.characteristic_in_order_id == characteristic_in_order_id)
+    return query.all()
+
+
+def get_date_load_by_id(session: Session, date_load_id: int) -> DBDateLoads:
+    query = session.query(DBDateLoads).filter(DBDateLoads.id == date_load_id)
+    return query.first()
+
+
+def finding_deadline_date_obj(session: Session, load_knitting_machines_data: List[DBLoadKnittingMachines]) -> datetime:
+    deadline_date = None
+    for current_load_machines in load_knitting_machines_data:
+        db_date_load = get_date_load_by_id(session, current_load_machines.date_load_id)
+        if deadline_date is None:
+            deadline_date = db_date_load.date
+        elif db_date_load.date > deadline_date:
+            deadline_date = db_date_load.date
+
+    return deadline_date
+
+
+def get_deadline_str_data(session: Session, characteristic_in_order_id: int) -> str:
+    loads_knitting_machine = get_load_knitting_machines_filter_by_characteristic_in_order_id(
+        session,
+        characteristic_in_order_id
+    )
+    deadline_date = finding_deadline_date_obj(session, loads_knitting_machine)
+    return deadline_date.strftime('%d.%m.%y')
 
 
 if __name__ == '__main__':

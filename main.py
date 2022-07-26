@@ -10,7 +10,8 @@ import create_characteristic_widget
 import design
 from queries import make_session, get_all_nomenclature, get_characteristic_for_good, create_nomenclature, \
     get_grouped_loading_of_machines, get_info_about_characteristic_in_order, get_order_by_one_c_id, create_order, \
-    create_order_with_date_load, create_characteristic
+    create_order_with_date_load, create_characteristic, get_all_characteristics_in_order, get_deadline_str_data, \
+    get_all_orders
 
 
 class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
@@ -29,8 +30,88 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.session = make_session()
 
         self.get_all_nomenclature()
-        self.tableWidget_nomenclature.resizeColumnsToContents()
         self.get_loading_of_machines()
+        self.fill_orders_data()
+
+    def fill_orders_data(self):
+        db_characteristics_in_order = get_all_characteristics_in_order(self.session)
+        db_orders = get_all_orders(self.session)
+
+        orders_columns = ["№ Заказа", "Артикул", "Номенклатура", "Характеристика", "Количество", "Дата окончания"]
+        self.tableWidget_orders.setColumnCount(len(orders_columns))
+        self.tableWidget_orders.setHorizontalHeaderLabels(orders_columns)
+
+        row_count_table = len(db_characteristics_in_order) + len(db_orders)
+        self.tableWidget_orders.setRowCount(row_count_table)
+
+        row_counter = 0
+        current_order_id = None
+        current_deadline_date = None
+        for current_characteristic_in_order in db_characteristics_in_order:
+            characteristic_data = get_info_about_characteristic_in_order(
+                self.session,
+                current_characteristic_in_order.id
+            )
+
+            characteristic_data["deadline_date"] = get_deadline_str_data(
+                self.session,
+                current_characteristic_in_order.id
+            )
+            if characteristic_data["order_number"] != current_order_id:
+                if current_order_id is not None:
+                    order_number_item = QTableWidgetItem()
+                    order_number_item.setData(2, current_order_id)
+                    self.tableWidget_orders.setItem(row_counter, 0, order_number_item)
+
+                    deadline_date_item = QTableWidgetItem()
+                    deadline_date_item.setData(2, current_deadline_date)
+                    self.tableWidget_orders.setItem(row_counter, 5, deadline_date_item)
+
+                    current_order_id = characteristic_data["order_number"]
+                    current_deadline_date = None
+                    row_counter += 1
+                else:
+                    current_order_id = characteristic_data["order_number"]
+
+            order_number_item = QTableWidgetItem()
+            order_number_item.setData(2, characteristic_data["order_number"])
+            self.tableWidget_orders.setItem(row_counter, 0, order_number_item)
+
+            order_number_item = QTableWidgetItem()
+            order_number_item.setData(2, characteristic_data["article"])
+            self.tableWidget_orders.setItem(row_counter, 1, order_number_item)
+
+            order_number_item = QTableWidgetItem()
+            order_number_item.setData(2, characteristic_data["nomenclature_name"])
+            self.tableWidget_orders.setItem(row_counter, 2, order_number_item)
+
+            order_number_item = QTableWidgetItem()
+            order_number_item.setData(2, characteristic_data["characteristic_name"])
+            self.tableWidget_orders.setItem(row_counter, 3, order_number_item)
+
+            order_number_item = QTableWidgetItem()
+            order_number_item.setData(2, characteristic_data["amount"])
+            self.tableWidget_orders.setItem(row_counter, 4, order_number_item)
+
+            order_number_item = QTableWidgetItem()
+            order_number_item.setData(2, characteristic_data["deadline_date"])
+            self.tableWidget_orders.setItem(row_counter, 5, order_number_item)
+
+            if current_deadline_date is None:
+                current_deadline_date = characteristic_data["deadline_date"]
+            elif characteristic_data["deadline_date"] > current_deadline_date:
+                current_deadline_date = characteristic_data["deadline_date"]
+
+            row_counter += 1
+
+        order_number_item = QTableWidgetItem()
+        order_number_item.setData(2, current_order_id)
+        self.tableWidget_orders.setItem(row_counter, 0, order_number_item)
+
+        deadline_date_item = QTableWidgetItem()
+        deadline_date_item.setData(2, current_deadline_date)
+        self.tableWidget_orders.setItem(row_counter, 5, deadline_date_item)
+        self.tableWidget_orders.resizeColumnsToContents()
 
     def open_create_characteristic_widget(self):
         self.create_characteristic_widget = CreateCharacteristicWidget()
@@ -72,6 +153,7 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         create_order_with_date_load(self.session, db_order.id, characteristic_id, characteristic_amount)
         self.create_order_widget.hide()
         self.get_loading_of_machines()
+        self.fill_orders_data()
 
     def get_loading_of_machines(self):
         all_loading_machines_data = get_grouped_loading_of_machines(self.session)
@@ -169,6 +251,7 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 time_references_item.setData(2, nomenclature.time_references)
                 self.tableWidget_nomenclature.setItem(row_counter, 3, time_references_item)
                 row_counter += 1
+        self.tableWidget_nomenclature.resizeColumnsToContents()
 
     def open_create_good_widget(self):
         self.create_good_widget = CreateNomenclatureWidget()
