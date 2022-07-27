@@ -31,14 +31,31 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.session = make_session()
 
         self.get_all_nomenclature()
+        self.fill_columns_to_filter()
         self.get_loading_of_machines()
         self.fill_orders_data()
         self.tabWidget.setCurrentIndex(0)
         self.lineEdit_filter.textChanged.connect(self.apply_filter)
 
+    def fill_columns_to_filter(self):
+        columns = ["Артикул", "Номенклатура", "Характеристика"]
+        column_counter = 0
+        for column_name in columns:
+            self.comboBox_select_column.addItem(column_name, column_counter)
+            column_counter += 1
+
     def apply_filter(self):
-        a = self.tableWidget_nomenclature.findItems(self.lineEdit_filter.text(), Qt.MatchContains)
-        print(a)
+        column_index = self.comboBox_select_column.currentIndex()
+        for row_number in range(self.tableWidget_nomenclature.rowCount()):
+            cell_data = self.tableWidget_nomenclature.item(row_number, column_index).text().lower()
+            filter_text = self.lineEdit_filter.text().lower()
+            if filter_text is not None:
+                if filter_text in cell_data:
+                    self.tableWidget_nomenclature.showRow(row_number)
+                else:
+                    self.tableWidget_nomenclature.hideRow(row_number)
+            else:
+                self.tableWidget_nomenclature.showRow(row_number)
 
     def fill_orders_data(self):
         db_characteristics_in_order = get_all_characteristics_in_order(self.session)
@@ -309,10 +326,10 @@ class CreateCharacteristicWidget(QtWidgets.QWidget, create_characteristic_widget
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)  # Новый экземпляр QApplication
     window = MainWindow()  # Создаём объект класса ExampleApp
-    File = open("SyNet.qss", 'r')
-
-    with File:
-        qss = File.read()
-        app.setStyleSheet(qss)
+    # File = open("SyNet.qss", 'r')
+    #
+    # with File:
+    #     qss = File.read()
+    #     app.setStyleSheet(qss)
     window.show()  # Показываем окно
     app.exec_()  # и запускаем приложение

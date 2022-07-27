@@ -1,5 +1,6 @@
 import datetime
 from datetime import date, timedelta
+from datetime import datetime as datetime_lib
 from typing import List
 
 from sqlalchemy import create_engine
@@ -210,7 +211,8 @@ def get_load_knitting_machines_by_date_load_id(session: Session, date_load_id: i
 
 
 def get_grouped_loading_of_machines(session: Session) -> dict:
-    query: List[DBDateLoads] = session.query(DBDateLoads).all()
+    yesterday_date = datetime_lib.now() - timedelta(days=1)
+    query: List[DBDateLoads] = session.query(DBDateLoads).filter(DBDateLoads.date >= yesterday_date).all()
     loading_machines = dict()
     for db_date_load in query:
         if db_date_load.knitting_machine_id not in loading_machines.keys():
