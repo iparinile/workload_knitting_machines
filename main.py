@@ -11,8 +11,8 @@ import create_characteristic_widget
 import design
 from queries import make_session, get_all_nomenclature, get_characteristic_for_good, create_nomenclature, \
     get_grouped_loading_of_machines, get_info_about_characteristic_in_order, get_order_by_one_c_id, create_order, \
-    create_order_with_date_load, create_characteristic, get_all_characteristics_in_order, get_deadline_str_data, \
-    get_all_orders
+    create_date_load_to_characteristic, create_characteristic, get_all_characteristics_in_order, \
+    get_deadline_for_characteristic_in_order, get_all_orders, get_characteristic_in_order, create_characteristic_in_order
 
 
 class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
@@ -77,7 +77,7 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 current_characteristic_in_order.id
             )
 
-            characteristic_data["deadline_date"] = get_deadline_str_data(
+            characteristic_data["deadline_date"] = get_deadline_for_characteristic_in_order(
                 self.session,
                 current_characteristic_in_order.id
             )
@@ -85,10 +85,11 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 if current_order_id is not None:
                     order_number_item = QTableWidgetItem()
                     order_number_item.setData(2, current_order_id)
+                    order_number_item.setTextAlignment(Qt.AlignCenter)
                     self.tableWidget_orders.setItem(row_counter, 0, order_number_item)
 
                     deadline_date_item = QTableWidgetItem()
-                    deadline_date_item.setData(2, current_deadline_date)
+                    deadline_date_item.setData(2, current_deadline_date.strftime('%d.%m.%y'))
                     self.tableWidget_orders.setItem(row_counter, 5, deadline_date_item)
 
                     current_order_id = characteristic_data["order_number"]
@@ -99,27 +100,28 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
             order_number_item = QTableWidgetItem()
             order_number_item.setData(2, characteristic_data["order_number"])
+            order_number_item.setTextAlignment(Qt.AlignCenter)
             self.tableWidget_orders.setItem(row_counter, 0, order_number_item)
 
-            order_number_item = QTableWidgetItem()
-            order_number_item.setData(2, characteristic_data["article"])
-            self.tableWidget_orders.setItem(row_counter, 1, order_number_item)
+            article_item = QTableWidgetItem()
+            article_item.setData(2, characteristic_data["article"])
+            self.tableWidget_orders.setItem(row_counter, 1, article_item)
 
-            order_number_item = QTableWidgetItem()
-            order_number_item.setData(2, characteristic_data["nomenclature_name"])
-            self.tableWidget_orders.setItem(row_counter, 2, order_number_item)
+            nomenclature_name_item = QTableWidgetItem()
+            nomenclature_name_item.setData(2, characteristic_data["nomenclature_name"])
+            self.tableWidget_orders.setItem(row_counter, 2, nomenclature_name_item)
 
-            order_number_item = QTableWidgetItem()
-            order_number_item.setData(2, characteristic_data["characteristic_name"])
-            self.tableWidget_orders.setItem(row_counter, 3, order_number_item)
+            characteristic_name_item = QTableWidgetItem()
+            characteristic_name_item.setData(2, characteristic_data["characteristic_name"])
+            self.tableWidget_orders.setItem(row_counter, 3, characteristic_name_item)
 
-            order_number_item = QTableWidgetItem()
-            order_number_item.setData(2, characteristic_data["amount"])
-            self.tableWidget_orders.setItem(row_counter, 4, order_number_item)
+            amount_item = QTableWidgetItem()
+            amount_item.setData(2, characteristic_data["amount"])
+            self.tableWidget_orders.setItem(row_counter, 4, amount_item)
 
-            order_number_item = QTableWidgetItem()
-            order_number_item.setData(2, characteristic_data["deadline_date"])
-            self.tableWidget_orders.setItem(row_counter, 5, order_number_item)
+            deadline_date_item = QTableWidgetItem()
+            deadline_date_item.setData(2, characteristic_data["deadline_date"].strftime('%d.%m.%y'))
+            self.tableWidget_orders.setItem(row_counter, 5, deadline_date_item)
 
             if current_deadline_date is None:
                 current_deadline_date = characteristic_data["deadline_date"]
@@ -130,10 +132,11 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         order_number_item = QTableWidgetItem()
         order_number_item.setData(2, current_order_id)
+        order_number_item.setTextAlignment(Qt.AlignCenter)
         self.tableWidget_orders.setItem(row_counter, 0, order_number_item)
 
         deadline_date_item = QTableWidgetItem()
-        deadline_date_item.setData(2, current_deadline_date)
+        deadline_date_item.setData(2, current_deadline_date.strftime('%d.%m.%y'))
         self.tableWidget_orders.setItem(row_counter, 5, deadline_date_item)
         self.tableWidget_orders.resizeColumnsToContents()
 
@@ -174,7 +177,24 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         if db_order is None:
             db_order = create_order(self.session, order_one_c_id)
 
-        create_order_with_date_load(self.session, db_order.id, characteristic_id, characteristic_amount)
+        db_characteristic_in_order = get_characteristic_in_order(self.session, db_order.id, characteristic_id)
+
+        if db_characteristic_in_order is not None:
+            pass
+        else:
+            db_characteristic_in_order = create_characteristic_in_order(
+                self.session,
+                db_order.id,
+                characteristic_id,
+                characteristic_amount
+            )
+
+        create_date_load_to_characteristic(
+            self.session,
+            db_characteristic_in_order,
+            characteristic_id,
+            characteristic_amount
+        )
         self.create_order_widget.hide()
         self.get_loading_of_machines()
         self.fill_orders_data()

@@ -58,10 +58,10 @@ def get_nomenclature_by_characteristic_id(session: Session, characteristic_id: i
     return query.first()
 
 
-def get_knitting_machine_by_name(session: Session, name: str) -> DBKnittingMachines:
+def get_knitting_machine_by_name(session: Session, name: str) -> List[DBKnittingMachines]:
     query = session.query(DBKnittingMachines)
-    query = query.filter(DBKnittingMachines.name == name)
-    return query.first()
+    query = query.filter(DBKnittingMachines.name.ilike(f'%{name}%'))
+    return query.all()
 
 
 def get_date_load(session: Session, selected_date: date, knitting_machine_id: id) -> DBDateLoads:
@@ -163,45 +163,56 @@ def get_busy_minutes(session: Session, date_load_id: int) -> int:
     return total_load
 
 
-def create_order_with_date_load(session: Session, order_id: int, characteristic_id: int, amount: int):
-    current_date = date.today()
+def get_characteristic_in_order(session: Session, order_id: int, characteristic_id: int) -> DBCharacteristicInOrders:
+    query = session.query(DBCharacteristicInOrders)
+    query = query.filter(DBCharacteristicInOrders.order_id == order_id)
+    query = query.filter(DBCharacteristicInOrders.characteristic_id == characteristic_id)
+    return query.first()
 
-    db_characteristic_in_order = create_characteristic_in_order(session, order_id, characteristic_id, amount)
+
+def create_date_load_to_characteristic(
+        session: Session,
+        db_characteristic_in_order: DBCharacteristicInOrders,
+        characteristic_id: int,
+        amount: int
+):
+    current_date = date.today()
 
     db_nomenclature = get_nomenclature_by_characteristic_id(session, characteristic_id)
 
     knitting_machine_name = db_nomenclature.article.split("-")[0]
-    db_knitting_machine = get_knitting_machine_by_name(session, knitting_machine_name)
+    db_knitting_machines = get_knitting_machine_by_name(session, knitting_machine_name)
 
     time_references = db_nomenclature.time_references * db_characteristic_in_order.amount
 
     while time_references != 0:
         current_date = current_date + timedelta(days=1)  # Смотрим следующий день и выбираем его текущим
-        db_date_load = get_date_load(session, current_date, db_knitting_machine.id)
+        for db_knitting_machine in db_knitting_machines:
+            db_date_load = get_date_load(session, current_date, db_knitting_machine.id)
 
-        if db_date_load is None:
-            db_date_load = create_date_load(session, current_date, db_knitting_machine.id)
+            if db_date_load is None:
+                db_date_load = create_date_load(session, current_date, db_knitting_machine.id)
 
-        busy_minutes = get_busy_minutes(session, db_date_load.id)
+            busy_minutes = get_busy_minutes(session, db_date_load.id)
 
-        total_load = db_date_load.total_load - busy_minutes
+            total_load = db_date_load.total_load - busy_minutes
 
-        if total_load <= 0:
-            continue
-        elif time_references <= total_load:
-            create_load_knitting_machines(session, db_characteristic_in_order.id, db_date_load.id, time_references)
-            time_references = 0
-        else:
-            sewing_time = 0
-            for _ in range(amount):
-                if db_nomenclature.time_references > total_load:
-                    break
-                sewing_time += db_nomenclature.time_references
-                time_references -= db_nomenclature.time_references
-                total_load -= db_nomenclature.time_references
+            if total_load <= 0:
+                continue
+            elif time_references <= total_load:
+                create_load_knitting_machines(session, db_characteristic_in_order.id, db_date_load.id, time_references)
+                time_references = 0
+            else:
+                sewing_time = 0
+                for _ in range(amount):
+                    if db_nomenclature.time_references > total_load:
+                        break
+                    sewing_time += db_nomenclature.time_references
+                    time_references -= db_nomenclature.time_references
+                    total_load -= db_nomenclature.time_references
 
-            if sewing_time != 0:
-                create_load_knitting_machines(session, db_characteristic_in_order.id, db_date_load.id, sewing_time)
+                if sewing_time != 0:
+                    create_load_knitting_machines(session, db_characteristic_in_order.id, db_date_load.id, sewing_time)
 
 
 def get_load_knitting_machines_by_date_load_id(session: Session, date_load_id: int) -> List[DBLoadKnittingMachines]:
@@ -292,13 +303,13 @@ def finding_deadline_date_obj(session: Session, load_knitting_machines_data: Lis
     return deadline_date
 
 
-def get_deadline_str_data(session: Session, characteristic_in_order_id: int) -> str:
+def get_deadline_for_characteristic_in_order(session: Session, characteristic_in_order_id: int) -> datetime:
     loads_knitting_machine = get_load_knitting_machines_filter_by_characteristic_in_order_id(
         session,
         characteristic_in_order_id
     )
     deadline_date = finding_deadline_date_obj(session, loads_knitting_machine)
-    return deadline_date.strftime('%d.%m.%y')
+    return deadline_date
 
 
 if __name__ == '__main__':
