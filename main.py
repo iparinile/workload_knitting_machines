@@ -1,18 +1,22 @@
 import sys
+from typing import List
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QTableWidgetItem
+from PyQt5.QtWidgets import QTableWidgetItem, QComboBox
 
 import create_good
+import create_order_form
 
 import create_order_widget
 import create_characteristic_widget
 import design
+from db import DBNomenclature
 from queries import make_session, get_all_nomenclature, get_characteristic_for_good, create_nomenclature, \
     get_grouped_loading_of_machines, get_info_about_characteristic_in_order, get_order_by_one_c_id, create_order, \
     create_date_load_to_characteristic, create_characteristic, get_all_characteristics_in_order, \
-    get_deadline_for_characteristic_in_order, get_all_orders, get_characteristic_in_order, create_characteristic_in_order
+    get_deadline_for_characteristic_in_order, get_all_orders, get_characteristic_in_order, \
+    create_characteristic_in_order, get_deadline_for_order, get_nomenclature_by_id
 
 
 class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
@@ -20,15 +24,17 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.create_good_widget = None
         self.create_characteristic_widget = None
         self.create_order_widget = None
+        self.create_order_form = None
         self.new_good_data = None
+        self.session = make_session()
+        self.all_nomenclature = get_all_nomenclature(self.session)
         super().__init__()
         self.setupUi(self)  # Это нужно для инициализации нашего дизайна
 
         self.pushButton_add_good.clicked.connect(self.open_create_good_widget)
         self.pushButton_add_characteristic.clicked.connect(self.open_create_characteristic_widget)
         self.pushButton_add_order_to_select_nomenclature.clicked.connect(self.open_create_order_widget)
-
-        self.session = make_session()
+        self.pushButton_create_order.clicked.connect(self.open_create_order_form)
 
         self.get_all_nomenclature()
         self.fill_columns_to_filter()
@@ -36,6 +42,66 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.fill_orders_data()
         self.tabWidget.setCurrentIndex(0)
         self.lineEdit_filter.textChanged.connect(self.apply_filter)
+
+    def open_create_order_form(self):
+        self.all_nomenclature = get_all_nomenclature(self.session)
+        self.create_order_form = CreateOrderForm()
+
+        self.create_order_form.show()
+        order_columns = ["Артикул", "Номенклатура", "Характеристика", "Количество", "Дата вязки"]
+        self.create_order_form.tableWidget_characteristics_in_order.setColumnCount(len(order_columns))
+        self.create_order_form.tableWidget_characteristics_in_order.setHorizontalHeaderLabels(order_columns)
+
+        self.create_order_form.pushButton_add_row.clicked.connect(self.create_row_in_create_order_table)
+        self.create_order_form.pushButton_delete_row.clicked.connect(self.delete_row_in_create_order_table)
+
+        self.create_row_in_create_order_table()
+
+    def delete_row_in_create_order_table(self):
+        row_count = self.create_order_form.tableWidget_characteristics_in_order.currentRow()
+        self.create_order_form.tableWidget_characteristics_in_order.removeRow(row_count)
+
+    def create_row_in_create_order_table(self):
+        row_count = self.create_order_form.tableWidget_characteristics_in_order.rowCount()
+        self.create_order_form.tableWidget_characteristics_in_order.insertRow(row_count)
+        new_row_index = row_count
+        select_article_combobox = QComboBox()
+        select_article_combobox.setEditable(True)
+
+        for nomenclature in self.all_nomenclature:
+            select_article_combobox.addItem(nomenclature.article, nomenclature.id)
+        select_article_combobox.setCurrentIndex(-1)
+
+        self.create_order_form.tableWidget_characteristics_in_order.setCellWidget(
+            new_row_index,
+            0,
+            select_article_combobox
+        )
+        select_article_combobox.currentIndexChanged.connect(self.fill_data_about_characteristics_to_nomenclature)
+
+    def fill_data_about_characteristics_to_nomenclature(self):
+        combobox = self.sender()
+        current_row = self.create_order_form.tableWidget_characteristics_in_order.currentRow()
+        nomenclature_id = combobox.itemData(combobox.currentIndex())
+        db_nomenclature = get_nomenclature_by_id(self.session, nomenclature_id)
+        db_characteristics = get_characteristic_for_good(self.session, nomenclature_id)
+
+        select_characteristic_combobox = QComboBox()
+        select_characteristic_combobox.setEditable(True)
+
+        for characteristic in db_characteristics:
+            select_characteristic_combobox.addItem(characteristic.name, characteristic.id)
+        select_characteristic_combobox.setCurrentIndex(-1)
+
+        nomenclature_name_item = QTableWidgetItem(db_nomenclature.name)
+        self.create_order_form.tableWidget_characteristics_in_order.setItem(current_row, 1, nomenclature_name_item)
+
+        self.create_order_form.tableWidget_characteristics_in_order.setCellWidget(
+            current_row,
+            2,
+            select_characteristic_combobox
+        )
+        # select_characteristic_combobox.currentIndexChanged.connect(self.fill_data_about_characteristics_to_nomenclature)
 
     def fill_columns_to_filter(self):
         columns = ["Артикул", "Номенклатура", "Характеристика"]
@@ -58,86 +124,29 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 self.tableWidget_nomenclature.showRow(row_number)
 
     def fill_orders_data(self):
-        db_characteristics_in_order = get_all_characteristics_in_order(self.session)
         db_orders = get_all_orders(self.session)
 
-        orders_columns = ["№ Заказа", "Артикул", "Номенклатура", "Характеристика", "Количество", "Дата окончания"]
+        orders_columns = ["№ Заказа", "Дата вязки"]
         self.tableWidget_orders.setColumnCount(len(orders_columns))
         self.tableWidget_orders.setHorizontalHeaderLabels(orders_columns)
 
-        row_count_table = len(db_characteristics_in_order) + len(db_orders)
+        row_count_table = len(db_orders)
         self.tableWidget_orders.setRowCount(row_count_table)
 
         row_counter = 0
-        current_order_id = None
-        current_deadline_date = None
-        for current_characteristic_in_order in db_characteristics_in_order:
-            characteristic_data = get_info_about_characteristic_in_order(
-                self.session,
-                current_characteristic_in_order.id
-            )
+        for order in db_orders:
+            order_deadline = get_deadline_for_order(self.session, order.id)
 
-            characteristic_data["deadline_date"] = get_deadline_for_characteristic_in_order(
-                self.session,
-                current_characteristic_in_order.id
-            )
-            if characteristic_data["order_number"] != current_order_id:
-                if current_order_id is not None:
-                    order_number_item = QTableWidgetItem()
-                    order_number_item.setData(2, current_order_id)
-                    order_number_item.setTextAlignment(Qt.AlignCenter)
-                    self.tableWidget_orders.setItem(row_counter, 0, order_number_item)
+            order_id_item = QTableWidgetItem()
+            order_id_item.setData(2, order.one_c_id)
+            self.tableWidget_orders.setItem(row_counter, 0, order_id_item)
 
-                    deadline_date_item = QTableWidgetItem()
-                    deadline_date_item.setData(2, current_deadline_date.strftime('%d.%m.%y'))
-                    self.tableWidget_orders.setItem(row_counter, 5, deadline_date_item)
-
-                    current_order_id = characteristic_data["order_number"]
-                    current_deadline_date = None
-                    row_counter += 1
-                else:
-                    current_order_id = characteristic_data["order_number"]
-
-            order_number_item = QTableWidgetItem()
-            order_number_item.setData(2, characteristic_data["order_number"])
-            order_number_item.setTextAlignment(Qt.AlignCenter)
-            self.tableWidget_orders.setItem(row_counter, 0, order_number_item)
-
-            article_item = QTableWidgetItem()
-            article_item.setData(2, characteristic_data["article"])
-            self.tableWidget_orders.setItem(row_counter, 1, article_item)
-
-            nomenclature_name_item = QTableWidgetItem()
-            nomenclature_name_item.setData(2, characteristic_data["nomenclature_name"])
-            self.tableWidget_orders.setItem(row_counter, 2, nomenclature_name_item)
-
-            characteristic_name_item = QTableWidgetItem()
-            characteristic_name_item.setData(2, characteristic_data["characteristic_name"])
-            self.tableWidget_orders.setItem(row_counter, 3, characteristic_name_item)
-
-            amount_item = QTableWidgetItem()
-            amount_item.setData(2, characteristic_data["amount"])
-            self.tableWidget_orders.setItem(row_counter, 4, amount_item)
-
-            deadline_date_item = QTableWidgetItem()
-            deadline_date_item.setData(2, characteristic_data["deadline_date"].strftime('%d.%m.%y'))
-            self.tableWidget_orders.setItem(row_counter, 5, deadline_date_item)
-
-            if current_deadline_date is None:
-                current_deadline_date = characteristic_data["deadline_date"]
-            elif characteristic_data["deadline_date"] > current_deadline_date:
-                current_deadline_date = characteristic_data["deadline_date"]
+            deadline_order_item = QTableWidgetItem()
+            deadline_order_item.setData(2, order_deadline.strftime("%d.%m.%y"))
+            self.tableWidget_orders.setItem(row_counter, 1, deadline_order_item)
 
             row_counter += 1
 
-        order_number_item = QTableWidgetItem()
-        order_number_item.setData(2, current_order_id)
-        order_number_item.setTextAlignment(Qt.AlignCenter)
-        self.tableWidget_orders.setItem(row_counter, 0, order_number_item)
-
-        deadline_date_item = QTableWidgetItem()
-        deadline_date_item.setData(2, current_deadline_date.strftime('%d.%m.%y'))
-        self.tableWidget_orders.setItem(row_counter, 5, deadline_date_item)
         self.tableWidget_orders.resizeColumnsToContents()
 
     def open_create_characteristic_widget(self):
@@ -338,6 +347,12 @@ class CreateOrderWidget(QtWidgets.QWidget, create_order_widget.Ui_Form):
 
 
 class CreateCharacteristicWidget(QtWidgets.QWidget, create_characteristic_widget.Ui_Form):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+
+
+class CreateOrderForm(QtWidgets.QWidget, create_order_form.Ui_Form_order):
     def __init__(self):
         super().__init__()
         self.setupUi(self)

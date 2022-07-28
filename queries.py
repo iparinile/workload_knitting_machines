@@ -33,6 +33,12 @@ def get_nomenclature_by_name(session: Session, name: str) -> DBNomenclature:
     return query
 
 
+def get_nomenclature_by_id(session: Session, nomenclature_id: int) -> DBNomenclature:
+    query = session.query(DBNomenclature).filter(DBNomenclature.id == nomenclature_id)
+    query = query.first()
+    return query
+
+
 def get_all_nomenclature(session: Session) -> List[DBNomenclature]:
     query = session.query(DBNomenclature)
     query = query.all()
@@ -244,7 +250,7 @@ def get_order_by_id(session: Session, order_id: int) -> DBOrders:
     return query.first()
 
 
-def get_all_orders(session: Session) -> DBOrders:
+def get_all_orders(session: Session) -> List[DBOrders]:
     query = session.query(DBOrders)
     return query.all()
 
@@ -310,6 +316,20 @@ def get_deadline_for_characteristic_in_order(session: Session, characteristic_in
     )
     deadline_date = finding_deadline_date_obj(session, loads_knitting_machine)
     return deadline_date
+
+
+def get_deadline_for_order(session: Session, order_id: int) -> datetime:
+    query = session.query(DBCharacteristicInOrders).filter(DBCharacteristicInOrders.order_id == order_id)
+    db_characteristics_in_order: List[DBCharacteristicInOrders] = query.all()
+    order_deadline_date = None
+    for current_characteristic_in_order in db_characteristics_in_order:
+        characteristic_deadline = get_deadline_for_characteristic_in_order(session, current_characteristic_in_order.id)
+        if order_deadline_date is None:
+            order_deadline_date = characteristic_deadline
+        elif characteristic_deadline > order_deadline_date:
+            order_deadline_date = characteristic_deadline
+
+    return order_deadline_date
 
 
 if __name__ == '__main__':
