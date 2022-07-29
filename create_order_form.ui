@@ -48,9 +48,9 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton_save_and_close">
+      <widget class="QPushButton" name="pushButton_save">
        <property name="text">
-        <string>Сохранить и закрыть</string>
+        <string>Сохранить</string>
        </property>
       </widget>
      </item>

@@ -1,7 +1,7 @@
 import sys
 from typing import List
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QTableWidgetItem, QComboBox
 
@@ -54,8 +54,21 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         self.create_order_form.pushButton_add_row.clicked.connect(self.create_row_in_create_order_table)
         self.create_order_form.pushButton_delete_row.clicked.connect(self.delete_row_in_create_order_table)
+        self.create_order_form.pushButton_save.clicked.connect(self.create_order_from_form)
 
         self.create_row_in_create_order_table()
+
+    def create_order_from_form(self):
+        table_with_characteristic = self.create_order_form.tableWidget_characteristics_in_order
+        for row_counter in range(table_with_characteristic.rowCount()):
+            article_combobox: QComboBox = table_with_characteristic.cellWidget(row_counter, 0)
+            nomenclature_id = article_combobox.itemData(article_combobox.currentIndex())
+
+            characteristic_combobox: QComboBox = table_with_characteristic.cellWidget(row_counter, 2)
+            characteristic_id = characteristic_combobox.itemData(characteristic_combobox.currentIndex())
+
+            amount = table_with_characteristic.item(row_counter, 3).text()
+            a = 2
 
     def delete_row_in_create_order_table(self):
         row_count = self.create_order_form.tableWidget_characteristics_in_order.currentRow()
@@ -356,6 +369,9 @@ class CreateOrderForm(QtWidgets.QWidget, create_order_form.Ui_Form_order):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+    #
+    # def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+    #     print("test")
 
 
 if __name__ == '__main__':
