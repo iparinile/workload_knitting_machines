@@ -16,7 +16,8 @@ from queries import make_session, get_all_nomenclature, get_characteristic_for_g
     get_grouped_loading_of_machines, get_info_about_characteristic_in_order, get_order_by_one_c_id, create_order, \
     create_date_load_to_characteristic, create_characteristic, get_all_characteristics_in_order, \
     get_deadline_for_characteristic_in_order, get_all_orders, get_characteristic_in_order, \
-    create_characteristic_in_order, get_deadline_for_order, get_nomenclature_by_id
+    create_characteristic_in_order, get_deadline_for_order, get_nomenclature_by_id, get_characteristics_for_order, \
+    get_nomenclature_by_characteristic_id
 
 
 class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
@@ -60,15 +61,112 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def create_order_from_form(self):
         table_with_characteristic = self.create_order_form.tableWidget_characteristics_in_order
+        order_one_c_id = self.create_order_form.lineEdit_order_one_c_id.text()
+        db_order = get_order_by_one_c_id(self.session, order_one_c_id)
+
+        if db_order is None:
+            db_order = create_order(self.session, order_one_c_id)
+
         for row_counter in range(table_with_characteristic.rowCount()):
             article_combobox: QComboBox = table_with_characteristic.cellWidget(row_counter, 0)
             nomenclature_id = article_combobox.itemData(article_combobox.currentIndex())
 
+            article = table_with_characteristic.item(row_counter, 1).text()
+
             characteristic_combobox: QComboBox = table_with_characteristic.cellWidget(row_counter, 2)
             characteristic_id = characteristic_combobox.itemData(characteristic_combobox.currentIndex())
 
-            amount = table_with_characteristic.item(row_counter, 3).text()
-            a = 2
+            amount = int(table_with_characteristic.item(row_counter, 3).text())
+            db_characteristic_in_order = get_characteristic_in_order(self.session, db_order.id, characteristic_id)
+
+            if db_characteristic_in_order is not None:
+                pass
+            else:
+                db_characteristic_in_order = create_characteristic_in_order(
+                    self.session,
+                    db_order.id,
+                    characteristic_id,
+                    amount
+                )
+
+            create_date_load_to_characteristic(
+                self.session,
+                db_characteristic_in_order,
+                characteristic_id,
+                amount
+            )
+        self.fill_order_form(order_one_c_id)
+        self.fill_orders_data()
+
+    def fill_order_form(self, order_one_c_id: int):
+        db_order = get_order_by_one_c_id(self.session, order_one_c_id)
+        self.create_order_form.lineEdit_order_one_c_id.text = order_one_c_id
+        order_columns = ["Артикул", "Номенклатура", "Характеристика", "Количество", "Дата вязки"]
+        self.create_order_form.tableWidget_characteristics_in_order.setColumnCount(len(order_columns))
+        self.create_order_form.tableWidget_characteristics_in_order.setHorizontalHeaderLabels(order_columns)
+
+        db_characteristics_for_order = get_characteristics_for_order(self.session, db_order.id)
+        self.create_order_form.tableWidget_characteristics_in_order.setRowCount(len(db_characteristics_for_order))
+
+        row_counter = 0
+        for current_characteristic in db_characteristics_for_order:
+            characteristic_info = get_info_about_characteristic_in_order(
+                self.session,
+                current_characteristic.id
+            )
+            select_article_combobox = QComboBox()
+            select_article_combobox.setEditable(True)
+            for nomenclature in self.all_nomenclature:
+                select_article_combobox.addItem(nomenclature.article, nomenclature.id)
+            article_index = select_article_combobox.findText(characteristic_info["article"])
+            select_article_combobox.setCurrentIndex(article_index)
+
+            self.create_order_form.tableWidget_characteristics_in_order.setCellWidget(
+                row_counter,
+                0,
+                select_article_combobox
+            )
+            nomenclature_name_item = QTableWidgetItem()
+            nomenclature_name_item.setData(2, characteristic_info["nomenclature_name"])
+            self.create_order_form.tableWidget_characteristics_in_order.setItem(row_counter, 1, nomenclature_name_item)
+
+            db_nomenclature = get_nomenclature_by_characteristic_id(
+                self.session,
+                current_characteristic.characteristic_id
+            )
+            db_characteristics = get_characteristic_for_good(self.session, db_nomenclature.id)
+
+            select_characteristic_combobox = QComboBox()
+            select_characteristic_combobox.setEditable(True)
+
+            for characteristic in db_characteristics:
+                select_characteristic_combobox.addItem(characteristic.name, characteristic.id)
+            characteristic_index = select_characteristic_combobox.findData(current_characteristic.characteristic_id)
+            select_characteristic_combobox.setCurrentIndex(characteristic_index)
+
+            self.create_order_form.tableWidget_characteristics_in_order.setCellWidget(
+                row_counter,
+                2,
+                select_characteristic_combobox
+            )
+            amount_item = QTableWidgetItem()
+            amount_item.setData(2, characteristic_info["amount"])
+            self.create_order_form.tableWidget_characteristics_in_order.setItem(
+                row_counter,
+                3,
+                amount_item
+            )
+
+            deadline = get_deadline_for_characteristic_in_order(self.session, current_characteristic.id)
+            deadline_item = QTableWidgetItem()
+            deadline_item.setData(2, deadline.strftime("%d.%m.%y"))
+            self.create_order_form.tableWidget_characteristics_in_order.setItem(
+                row_counter,
+                4,
+                deadline_item
+            )
+
+            row_counter += 1
 
     def delete_row_in_create_order_table(self):
         row_count = self.create_order_form.tableWidget_characteristics_in_order.currentRow()

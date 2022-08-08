@@ -283,6 +283,11 @@ def get_all_characteristics_in_order(session: Session) -> List[DBCharacteristicI
     return query.all()
 
 
+def get_characteristics_for_order(session: Session, order_id: int) -> List[DBCharacteristicInOrders]:
+    query = session.query(DBCharacteristicInOrders).filter(DBCharacteristicInOrders.order_id == order_id)
+    return query.all()
+
+
 def get_load_knitting_machines_filter_by_characteristic_in_order_id(
         session: Session,
         characteristic_in_order_id: int
