@@ -37,12 +37,36 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.pushButton_add_order_to_select_nomenclature.clicked.connect(self.open_create_order_widget)
         self.pushButton_create_order.clicked.connect(self.open_create_order_form)
 
+        self.tableWidget_orders.doubleClicked.connect(self.open_order_form)
+
         self.get_all_nomenclature()
         self.fill_columns_to_filter()
         self.get_loading_of_machines()
         self.fill_orders_data()
         self.tabWidget.setCurrentIndex(0)
         self.lineEdit_filter.textChanged.connect(self.apply_filter)
+
+    def open_order_form(self):
+        self.all_nomenclature = get_all_nomenclature(self.session)
+        self.create_order_form = CreateOrderForm()
+
+        self.create_order_form.show()
+        order_columns = ["Артикул", "Номенклатура", "Характеристика", "Количество", "Дата вязки"]
+        self.create_order_form.tableWidget_characteristics_in_order.setColumnCount(len(order_columns))
+        self.create_order_form.tableWidget_characteristics_in_order.setHorizontalHeaderLabels(order_columns)
+
+        self.create_order_form.pushButton_add_row.clicked.connect(self.create_row_in_create_order_table)
+        self.create_order_form.pushButton_delete_row.clicked.connect(self.delete_row_in_create_order_table)
+        # self.create_order_form.pushButton_save.clicked.connect(self.create_order_from_form)
+
+        current_order_row_index = self.tableWidget_orders.currentRow()
+        order_one_c_id = self.tableWidget_orders.item(current_order_row_index, 0).text()
+
+        self.create_order_form.lineEdit_order_one_c_id.setText(order_one_c_id)
+        self.create_order_form.lineEdit_order_one_c_id.setEnabled(False)
+
+        order_one_c_id = int(order_one_c_id)
+        self.fill_order_form(order_one_c_id)
 
     def open_create_order_form(self):
         self.all_nomenclature = get_all_nomenclature(self.session)
