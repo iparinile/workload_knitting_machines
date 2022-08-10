@@ -17,9 +17,8 @@ def make_session():
     return session
 
 
-def create_nomenclature(session: Session, article: str, name: str, time_references: int) -> None:
+def create_nomenclature(session: Session, name: str, time_references: int) -> None:
     new_nomenclature = DBNomenclature(
-        article=article,
         name=name,
         time_references=time_references
     )
@@ -66,7 +65,7 @@ def get_nomenclature_by_characteristic_id(session: Session, characteristic_id: i
 
 def get_knitting_machine_by_name(session: Session, name: str) -> List[DBKnittingMachines]:
     query = session.query(DBKnittingMachines)
-    query = query.filter(DBKnittingMachines.name.ilike(f'%{name}%'))
+    query = query.filter(DBKnittingMachines.name == name)
     return query.all()
 
 
@@ -186,7 +185,7 @@ def create_date_load_to_characteristic(
 
     db_nomenclature = get_nomenclature_by_characteristic_id(session, characteristic_id)
 
-    knitting_machine_name = db_nomenclature.article.split("-")[0]
+    knitting_machine_name = db_nomenclature.name.split("-")[0]
     db_knitting_machines = get_knitting_machine_by_name(session, knitting_machine_name)
 
     time_references = db_nomenclature.time_references * db_characteristic_in_order.amount
@@ -270,7 +269,6 @@ def get_info_about_characteristic_in_order(session: Session, characteristic_in_o
     characteristic_info_to_view = {
         "order_number": db_order.one_c_id,
         "nomenclature_name": db_nomenclature.name,
-        "article": db_nomenclature.article,
         "characteristic_name": db_characteristic.name,
         "amount": db_characteristic_in_order.amount
     }

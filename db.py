@@ -12,7 +12,6 @@ class DBNomenclature(Base):
     __tablename__ = "Nomenclature"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    article = Column(String(255), unique=True, nullable=False)
     name = Column(String(255), unique=True, nullable=False)
     time_references = Column(Integer, nullable=False)
 
