@@ -46,6 +46,7 @@ class DBOrders(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     one_c_id = Column(Integer, nullable=False)
     created_at = Column(TIMESTAMP, default=datetime.datetime.utcnow)
+    # start_knitting_date = Column(TIMESTAMP, default=datetime.datetime.utcnow)
 
 
 class DBDateLoads(Base):

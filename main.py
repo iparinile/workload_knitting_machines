@@ -1,8 +1,6 @@
 import sys
-from typing import List
 
-from PyQt5 import QtWidgets, QtGui
-from PyQt5.QtCore import Qt
+from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QTableWidgetItem, QComboBox, QMessageBox
 
 import create_good
@@ -11,7 +9,7 @@ import create_order_form
 import create_order_widget
 import create_characteristic_widget
 import design
-from db import DBNomenclature
+from processing import delete_order_and_update_date_loads
 from queries import make_session, get_all_nomenclature, get_characteristic_for_good, create_nomenclature, \
     get_grouped_loading_of_machines, get_info_about_characteristic_in_order, get_order_by_one_c_id, create_order, \
     create_date_load_to_characteristic, create_characteristic, get_all_characteristics_in_order, \
@@ -36,6 +34,7 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.pushButton_add_characteristic.clicked.connect(self.open_create_characteristic_widget)
         self.pushButton_add_order_to_select_nomenclature.clicked.connect(self.open_create_order_widget)
         self.pushButton_create_order.clicked.connect(self.open_create_order_form)
+        self.pushButton_delete_selected_order.clicked.connect(self.delete_selected_order)
 
         self.tableWidget_orders.doubleClicked.connect(self.open_order_form)
 
@@ -45,6 +44,14 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.fill_orders_data()
         self.tabWidget.setCurrentIndex(0)
         self.lineEdit_filter.textChanged.connect(self.apply_filter)
+
+    def delete_selected_order(self):
+        current_order_row_index = self.tableWidget_orders.currentRow()
+        order_one_c_id = self.tableWidget_orders.item(current_order_row_index, 0).text()
+
+        delete_order_and_update_date_loads(self.session, order_one_c_id)
+        self.get_loading_of_machines()
+        self.fill_orders_data()
 
     def open_order_form(self):
         self.all_nomenclature = get_all_nomenclature(self.session)
@@ -132,6 +139,7 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 )
             self.fill_order_form(order_one_c_id)
             self.fill_orders_data()
+            self.get_loading_of_machines()
 
     def fill_order_form(self, order_one_c_id: int):
         db_order = get_order_by_one_c_id(self.session, order_one_c_id)

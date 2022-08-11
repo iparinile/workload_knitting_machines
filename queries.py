@@ -76,6 +76,14 @@ def get_date_load(session: Session, selected_date: date, knitting_machine_id: id
     return query.first()
 
 
+def get_date_load_starting_tomorrow(session: Session, knitting_machine_id: id) -> List[DBDateLoads]:
+    query = session.query(DBDateLoads)
+    current_date = date.today()
+    query = query.filter(DBDateLoads.date > current_date)
+    query = query.filter(DBDateLoads.knitting_machine_id == knitting_machine_id)
+    return query.all()
+
+
 def create_date_load(
         session: Session,
         selected_date: date,
@@ -178,8 +186,8 @@ def get_characteristic_in_order(session: Session, order_id: int, characteristic_
 def create_date_load_to_characteristic(
         session: Session,
         db_characteristic_in_order: DBCharacteristicInOrders,
-        characteristic_id: int,
-        amount: int
+        characteristic_id: int,  # убрать, уже есть в DBCharacteristicInOrders
+        amount: int  # убрать, уже есть в DBCharacteristicInOrders
 ):
     current_date = date.today()
 
@@ -259,6 +267,14 @@ def get_characteristic_by_id(session: Session, characteristic_id: int) -> DBChar
     return query.first()
 
 
+def get_characteristic_in_order_by_id(
+        session: Session,
+        characteristic_in_order_id: int
+) -> DBCharacteristicInOrders:
+    query = session.query(DBCharacteristicInOrders).filter(DBCharacteristicInOrders.id == characteristic_in_order_id)
+    return query.first()
+
+
 def get_info_about_characteristic_in_order(session: Session, characteristic_in_order_id: int) -> dict:
     query = session.query(DBCharacteristicInOrders).filter(DBCharacteristicInOrders.id == characteristic_in_order_id)
     db_characteristic_in_order: DBCharacteristicInOrders = query.first()
@@ -319,6 +335,22 @@ def get_deadline_for_characteristic_in_order(session: Session, characteristic_in
     )
     deadline_date = finding_deadline_date_obj(session, loads_knitting_machine)
     return deadline_date
+
+
+def delete_order(session: Session, order_id: int):
+    query = session.query(DBOrders).filter(DBOrders.id == order_id)
+    query.delete()
+
+
+def delete_characteristics_in_order(session: Session, order_id: int):
+    query = session.query(DBCharacteristicInOrders).filter(DBCharacteristicInOrders.order_id == order_id)
+    query.delete()
+
+
+def delete_load_machine_for_characteristic(session: Session, characteristic_in_order_id: int):
+    query = session.query(DBLoadKnittingMachines).filter(
+        DBLoadKnittingMachines.characteristic_in_order_id == characteristic_in_order_id)
+    query.delete()
 
 
 def get_deadline_for_order(session: Session, order_id: int) -> datetime:
