@@ -373,6 +373,7 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
             elif machines_id == 5:
                 machines_sheet = self.tableWidget_12_1_grade
 
+            machines_sheet.setRowCount(0)
             max_row_counter = 0  # Поиск наибольшего количества строк
             for work_data in machine_load_data:
                 if len(work_data["load_machine_data"]) > max_row_counter:
