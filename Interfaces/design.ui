@@ -30,7 +30,7 @@
        <bool>false</bool>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>6</number>
       </property>
       <widget class="QWidget" name="tab_nomenclature">
        <attribute name="title">
@@ -114,7 +114,10 @@
        </attribute>
        <layout class="QGridLayout" name="gridLayout_4">
         <item row="0" column="0">
-         <widget class="QTableWidget" name="tableWidget_5_grade"/>
+         <widget class="QCalendarWidget" name="calendarWidget_5_grade"/>
+        </item>
+        <item row="0" column="1">
+         <widget class="QTextBrowser" name="textBrowser_5_grade"/>
         </item>
        </layout>
       </widget>
@@ -124,7 +127,10 @@
        </attribute>
        <layout class="QGridLayout" name="gridLayout_5">
         <item row="0" column="0">
-         <widget class="QTableWidget" name="tableWidget_7_grade"/>
+         <widget class="QCalendarWidget" name="calendarWidget_7_grade"/>
+        </item>
+        <item row="0" column="1">
+         <widget class="QTextBrowser" name="textBrowser_7_grade"/>
         </item>
        </layout>
       </widget>
@@ -134,7 +140,10 @@
        </attribute>
        <layout class="QGridLayout" name="gridLayout_6">
         <item row="0" column="0">
-         <widget class="QTableWidget" name="tableWidget_10_grade"/>
+         <widget class="QCalendarWidget" name="calendarWidget_10_grade"/>
+        </item>
+        <item row="0" column="1">
+         <widget class="QTextBrowser" name="textBrowser_10_grade"/>
         </item>
        </layout>
       </widget>
@@ -144,7 +153,10 @@
        </attribute>
        <layout class="QGridLayout" name="gridLayout_7">
         <item row="0" column="0">
-         <widget class="QTableWidget" name="tableWidget_12_grade"/>
+         <widget class="QCalendarWidget" name="calendarWidget_12_grade"/>
+        </item>
+        <item row="0" column="1">
+         <widget class="QTextBrowser" name="textBrowser_12_grade"/>
         </item>
        </layout>
       </widget>
@@ -154,7 +166,10 @@
        </attribute>
        <layout class="QGridLayout" name="gridLayout_8">
         <item row="0" column="0">
-         <widget class="QTableWidget" name="tableWidget_12_1_grade"/>
+         <widget class="QCalendarWidget" name="calendarWidget_12_1_grade"/>
+        </item>
+        <item row="0" column="1">
+         <widget class="QTextBrowser" name="textBrowser_12_1_grade"/>
         </item>
        </layout>
       </widget>

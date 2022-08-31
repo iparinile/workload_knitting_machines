@@ -1,21 +1,21 @@
 import sys
 
 from PyQt5 import QtWidgets
+from PyQt5.QtCore import QDate
 from PyQt5.QtWidgets import QTableWidgetItem, QComboBox, QMessageBox
 
-import create_good
-import create_order_form
+from Interfaces import create_characteristic_widget, design, create_good, create_order_form, create_order_widget
 
-import create_order_widget
-import create_characteristic_widget
-import design
+from helpers.painting_calendar import my_paint_cell
 from processing import delete_order_and_update_date_loads
-from queries import make_session, get_all_nomenclature, get_characteristic_for_good, create_nomenclature, \
-    get_grouped_loading_of_machines, get_info_about_characteristic_in_order, get_order_by_one_c_id, create_order, \
-    create_date_load_to_characteristic, create_characteristic, get_all_characteristics_in_order, \
-    get_deadline_for_characteristic_in_order, get_all_orders, get_characteristic_in_order, \
-    create_characteristic_in_order, get_deadline_for_order, get_nomenclature_by_id, get_characteristics_for_order, \
-    get_nomenclature_by_characteristic_id
+from queries.session import make_session
+from queries.load_knitting_machines import create_date_load_to_characteristic, get_grouped_loading_of_machines, \
+    get_deadline_for_characteristic_in_order
+from queries.characteristic_in_order import create_characteristic_in_order, get_info_about_characteristic_in_order, \
+    get_characteristics_for_order, get_characteristic_in_order
+from queries.orders import create_order, get_order_by_one_c_id, get_all_orders, get_deadline_for_order
+from queries.characteristic import get_characteristic_for_good, create_characteristic
+from queries.nomenclature import create_nomenclature, get_all_nomenclature, get_nomenclature_by_characteristic_id
 
 
 class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
@@ -110,10 +110,6 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
                 db_order = create_order(self.session, order_one_c_id)
 
             for row_counter in range(table_with_characteristic.rowCount()):
-                # article_combobox: QComboBox = table_with_characteristic.cellWidget(row_counter, 0)
-                # nomenclature_id = article_combobox.itemData(article_combobox.currentIndex())
-                #
-                # article = table_with_characteristic.item(row_counter, 1).text()
 
                 characteristic_combobox: QComboBox = table_with_characteristic.cellWidget(row_counter, 1)
                 characteristic_id = characteristic_combobox.itemData(characteristic_combobox.currentIndex())
@@ -235,7 +231,6 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         combobox = self.sender()
         current_row = self.create_order_form.tableWidget_characteristics_in_order.currentRow()
         nomenclature_id = combobox.itemData(combobox.currentIndex())
-        db_nomenclature = get_nomenclature_by_id(self.session, nomenclature_id)
         db_characteristics = get_characteristic_for_good(self.session, nomenclature_id)
 
         select_characteristic_combobox = QComboBox()
@@ -361,56 +356,59 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         all_loading_machines_data = get_grouped_loading_of_machines(self.session)
         for machines_id in all_loading_machines_data.keys():
             machine_load_data = all_loading_machines_data[machines_id]
-            machines_sheet = self.tableWidget_5_grade  # Придумать заглушку
+            machines_calendar = self.calendarWidget_5_grade  # Придумать заглушку
             if machines_id == 1:
-                machines_sheet = self.tableWidget_5_grade
+                machines_calendar = self.calendarWidget_5_grade
             elif machines_id == 2:
-                machines_sheet = self.tableWidget_7_grade
+                machines_calendar = self.calendarWidget_7_grade
             elif machines_id == 3:
-                machines_sheet = self.tableWidget_10_grade
+                machines_calendar = self.calendarWidget_10_grade
             elif machines_id == 4:
-                machines_sheet = self.tableWidget_12_grade
+                machines_calendar = self.calendarWidget_12_grade
             elif machines_id == 5:
-                machines_sheet = self.tableWidget_12_1_grade
+                machines_calendar = self.calendarWidget_12_1_grade
 
-            machines_sheet.setRowCount(0)
-            max_row_counter = 0  # Поиск наибольшего количества строк
-            for work_data in machine_load_data:
-                if len(work_data["load_machine_data"]) > max_row_counter:
-                    max_row_counter = len(work_data["load_machine_data"])
-            column_counter = len(machine_load_data)
+            machines_calendar.date_to_paint = QDate(2022, 8, 30)
+            machines_calendar.paintCell = my_paint_cell.__get__(machines_calendar, MainWindow)
 
-            machines_sheet.setRowCount(max_row_counter + 1)
-            machines_sheet.setColumnCount(column_counter)
-
-            column_headers = []
-            for db_date_load in machine_load_data:
-                column_headers.append(db_date_load['date'].strftime('%d.%m.%Y'))
-
-            machines_sheet.setHorizontalHeaderLabels(column_headers)
-
-            column_counter = 0
-            for work_date_info in machine_load_data:
-                total_load_item = QTableWidgetItem()
-                total_load_item.setData(2, work_date_info['total_load'])
-                machines_sheet.setItem(0, column_counter, total_load_item)
-                row_counter = 1
-                for db_load_machine in work_date_info['load_machine_data']:
-                    load_data_item = QTableWidgetItem()
-                    characteristic_info = get_info_about_characteristic_in_order(
-                        self.session,
-                        db_load_machine.characteristic_in_order_id)
-                    load_data_item.setData(2,
-                                           f"Заказ {characteristic_info['order_number']}, "
-                                           f"{characteristic_info['nomenclature_name']}"
-                                           f", {characteristic_info['characteristic_name']}, "
-                                           f"время - {db_load_machine.time_references} минут")
-                    machines_sheet.setItem(row_counter, column_counter, load_data_item)
-
-                    row_counter += 1
-                column_counter += 1
-
-            machines_sheet.resizeColumnsToContents()
+            # machines_sheet.setRowCount(0)
+            # max_row_counter = 0  # Поиск наибольшего количества строк
+            # for work_data in machine_load_data:
+            #     if len(work_data["load_machine_data"]) > max_row_counter:
+            #         max_row_counter = len(work_data["load_machine_data"])
+            # column_counter = len(machine_load_data)
+            #
+            # machines_sheet.setRowCount(max_row_counter + 1)
+            # machines_sheet.setColumnCount(column_counter)
+            #
+            # column_headers = []
+            # for db_date_load in machine_load_data:
+            #     column_headers.append(db_date_load['date'].strftime('%d.%m.%Y'))
+            #
+            # machines_sheet.setHorizontalHeaderLabels(column_headers)
+            #
+            # column_counter = 0
+            # for work_date_info in machine_load_data:
+            #     total_load_item = QTableWidgetItem()
+            #     total_load_item.setData(2, work_date_info['total_load'])
+            #     machines_sheet.setItem(0, column_counter, total_load_item)
+            #     row_counter = 1
+            #     for db_load_machine in work_date_info['load_machine_data']:
+            #         load_data_item = QTableWidgetItem()
+            #         characteristic_info = get_info_about_characteristic_in_order(
+            #             self.session,
+            #             db_load_machine.characteristic_in_order_id)
+            #         load_data_item.setData(2,
+            #                                f"Заказ {characteristic_info['order_number']}, "
+            #                                f"{characteristic_info['nomenclature_name']}"
+            #                                f", {characteristic_info['characteristic_name']}, "
+            #                                f"время - {db_load_machine.time_references} минут")
+            #         machines_sheet.setItem(row_counter, column_counter, load_data_item)
+            #
+            #         row_counter += 1
+            #     column_counter += 1
+            #
+            # machines_sheet.resizeColumnsToContents()
 
     def get_all_nomenclature(self):
         nomenclatures = get_all_nomenclature(self.session)

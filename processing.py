@@ -1,9 +1,13 @@
 from sqlalchemy.orm import Session
 
-from queries import get_order_by_one_c_id, get_characteristics_for_order, delete_load_machine_for_characteristic, \
-    delete_characteristics_in_order, delete_order, get_nomenclature_by_characteristic_id, get_knitting_machine_by_name, \
-    get_date_load_starting_tomorrow, get_load_knitting_machines_by_date_load_id, get_characteristic_by_id, \
-    get_characteristic_in_order_by_id, create_date_load_to_characteristic
+from queries.characteristic_in_order import get_characteristics_for_order, get_characteristic_in_order_by_id, \
+    delete_characteristics_in_order
+from queries.load_knitting_machines import create_date_load_to_characteristic, \
+    get_load_knitting_machines_by_date_load_id, delete_load_machine_for_characteristic
+from queries.orders import get_order_by_one_c_id, delete_order
+from queries.date_loads import get_date_load_starting_tomorrow
+from queries.knitting_machines import get_knitting_machine_by_name
+from queries.nomenclature import get_nomenclature_by_characteristic_id
 
 
 def delete_order_and_update_date_loads(session: Session, order_one_c_id: int):
