@@ -21,6 +21,18 @@ def get_date_load_starting_tomorrow(session: Session, knitting_machine_id: id) -
     return query.all()
 
 
+def get_date_load_for_knitting_machine(session: Session, knitting_machine_id: id) -> List[DBDateLoads]:
+    query = session.query(DBDateLoads).filter(DBDateLoads.knitting_machine_id == knitting_machine_id)
+    return query.all()
+
+
+def get_date_load_for_machine_on_date(session: Session, knitting_machine_id: id, current_date: date) -> DBDateLoads:
+    query = session.query(DBDateLoads)
+    query = query.filter(DBDateLoads.knitting_machine_id == knitting_machine_id)
+    query = query.filter(DBDateLoads.date == current_date)
+    return query.first()
+
+
 def create_date_load(
         session: Session,
         selected_date: date,

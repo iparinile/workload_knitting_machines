@@ -1,16 +1,19 @@
 import sys
+from datetime import date, datetime
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QDate
-from PyQt5.QtWidgets import QTableWidgetItem, QComboBox, QMessageBox
+from PyQt5.QtWidgets import QTableWidgetItem, QComboBox, QMessageBox, QTextBrowser, QCalendarWidget
 
 from Interfaces import create_characteristic_widget, design, create_good, create_order_form, create_order_widget
 
 from helpers.painting_calendar import my_paint_cell
 from processing import delete_order_and_update_date_loads
+from queries.date_loads import get_date_load_for_knitting_machine, get_date_load_for_machine_on_date
+from queries.knitting_machines import get_all_knitting_machines
 from queries.session import make_session
-from queries.load_knitting_machines import create_date_load_to_characteristic, get_grouped_loading_of_machines, \
-    get_deadline_for_characteristic_in_order
+from queries.load_knitting_machines import create_date_load_to_characteristic, \
+    get_deadline_for_characteristic_in_order, get_load_machine_by_date_load, get_load_knitting_machines_by_date_load_id
 from queries.characteristic_in_order import create_characteristic_in_order, get_info_about_characteristic_in_order, \
     get_characteristics_for_order, get_characteristic_in_order
 from queries.orders import create_order, get_order_by_one_c_id, get_all_orders, get_deadline_for_order
@@ -36,6 +39,10 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.pushButton_create_order.clicked.connect(self.open_create_order_form)
         self.pushButton_delete_selected_order.clicked.connect(self.delete_selected_order)
 
+        self.calendarWidget_5_grade.clicked.connect(
+            lambda: self.fill_load_machine_data_on_form(1, self.calendarWidget_5_grade.selectedDate(),
+                                                        self.textBrowser_5_grade))
+
         self.tableWidget_orders.doubleClicked.connect(self.open_order_form)
 
         self.get_all_nomenclature()
@@ -44,6 +51,25 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.fill_orders_data()
         self.tabWidget.setCurrentIndex(0)
         self.lineEdit_filter.textChanged.connect(self.apply_filter)
+
+    def fill_load_machine_data_on_form(self, machine_id: int, selected_date: QDate, text_browser: QTextBrowser):
+        date_load = get_date_load_for_machine_on_date(self.session, machine_id, selected_date.toPyDate())
+        if date_load is not None:
+            load_text_to_widget = ""
+            today_loads_machine = get_load_knitting_machines_by_date_load_id(self.session, date_load.id)
+            if len(today_loads_machine) > 0:
+                for load_machine in today_loads_machine:
+                    characteristic_info = get_info_about_characteristic_in_order(
+                        self.session,
+                        load_machine.characteristic_in_order_id
+                    )
+                    load_info = f"Заказ {characteristic_info['order_number']}, " \
+                                f"{characteristic_info['nomenclature_name']}, " \
+                                f"{characteristic_info['characteristic_name']}, " \
+                                f"время - {load_machine.time_references} минут"
+                    load_text_to_widget += load_info
+                    load_text_to_widget += "\n"
+            text_browser.setText(load_text_to_widget)
 
     def delete_selected_order(self):
         current_order_row_index = self.tableWidget_orders.currentRow()
@@ -353,9 +379,9 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.fill_orders_data()
 
     def get_loading_of_machines(self):
-        all_loading_machines_data = get_grouped_loading_of_machines(self.session)
-        for machines_id in all_loading_machines_data.keys():
-            machine_load_data = all_loading_machines_data[machines_id]
+        knitting_machines = get_all_knitting_machines(self.session)
+        for db_knitting_machine in knitting_machines:
+            machines_id = db_knitting_machine.id
             machines_calendar = self.calendarWidget_5_grade  # Придумать заглушку
             if machines_id == 1:
                 machines_calendar = self.calendarWidget_5_grade
@@ -368,8 +394,28 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
             elif machines_id == 5:
                 machines_calendar = self.calendarWidget_12_1_grade
 
-            machines_calendar.date_to_paint = QDate(2022, 8, 30)
+            machines_calendar.dates_to_paint = []
+            date_loads_for_machine = get_date_load_for_knitting_machine(self.session, machines_id)
+            for db_date_load in date_loads_for_machine:
+                if get_load_machine_by_date_load(self.session, db_date_load.id) is not None:
+                    date_obj: date = db_date_load.date
+                    machines_calendar.dates_to_paint.append(QDate(date_obj.year, date_obj.month, date_obj.day))
+
             machines_calendar.paintCell = my_paint_cell.__get__(machines_calendar, MainWindow)
+
+            today_date_load = get_date_load_for_machine_on_date(self.session, machines_id, datetime.today())
+            if today_date_load is not None:
+                today_loads_machine = get_load_knitting_machines_by_date_load_id(self.session, today_date_load.id)
+                if len(today_loads_machine) > 0:
+                    for load_machine in today_loads_machine:
+                        characteristic_info = get_info_about_characteristic_in_order(
+                            self.session,
+                            load_machine.characteristic_in_order_id
+                        )
+                        load_info = f"Заказ {characteristic_info['order_number']}, " \
+                                    f"{characteristic_info['nomenclature_name']}, " \
+                                    f"{characteristic_info['characteristic_name']}, " \
+                                    f"время - {load_machine.time_references} минут"
 
             # machines_sheet.setRowCount(0)
             # max_row_counter = 0  # Поиск наибольшего количества строк

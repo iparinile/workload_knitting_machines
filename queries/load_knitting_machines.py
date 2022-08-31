@@ -142,3 +142,8 @@ def delete_load_machine_for_characteristic(session: Session, characteristic_in_o
     query = session.query(DBLoadKnittingMachines).filter(
         DBLoadKnittingMachines.characteristic_in_order_id == characteristic_in_order_id)
     query.delete()
+
+
+def get_load_machine_by_date_load(session: Session, date_load_id: int) -> DBLoadKnittingMachines:
+    query = session.query(DBLoadKnittingMachines).filter(DBLoadKnittingMachines.date_load_id == date_load_id)
+    return query.first()
