@@ -1,9 +1,9 @@
 import sys
-from datetime import date, datetime
+from datetime import date
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QDate
-from PyQt5.QtWidgets import QTableWidgetItem, QComboBox, QMessageBox, QTextBrowser, QCalendarWidget
+from PyQt5.QtWidgets import QTableWidgetItem, QComboBox, QMessageBox, QTextBrowser
 
 from Interfaces import create_characteristic_widget, design, create_good, create_order_form, create_order_widget
 
@@ -42,6 +42,18 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.calendarWidget_5_grade.clicked.connect(
             lambda: self.fill_load_machine_data_on_form(1, self.calendarWidget_5_grade.selectedDate(),
                                                         self.textBrowser_5_grade))
+        self.calendarWidget_7_grade.clicked.connect(
+            lambda: self.fill_load_machine_data_on_form(2, self.calendarWidget_7_grade.selectedDate(),
+                                                        self.textBrowser_7_grade))
+        self.calendarWidget_10_grade.clicked.connect(
+            lambda: self.fill_load_machine_data_on_form(1, self.calendarWidget_10_grade.selectedDate(),
+                                                        self.textBrowser_10_grade))
+        self.calendarWidget_12_grade.clicked.connect(
+            lambda: self.fill_load_machine_data_on_form(1, self.calendarWidget_12_grade.selectedDate(),
+                                                        self.textBrowser_12_grade))
+        self.calendarWidget_12_1_grade.clicked.connect(
+            lambda: self.fill_load_machine_data_on_form(1, self.calendarWidget_12_1_grade.selectedDate(),
+                                                        self.textBrowser_12_1_grade))
 
         self.tableWidget_orders.doubleClicked.connect(self.open_order_form)
 
@@ -383,16 +395,22 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         for db_knitting_machine in knitting_machines:
             machines_id = db_knitting_machine.id
             machines_calendar = self.calendarWidget_5_grade  # Придумать заглушку
+            text_browser = self.textBrowser_5_grade
             if machines_id == 1:
                 machines_calendar = self.calendarWidget_5_grade
+                text_browser = self.textBrowser_5_grade
             elif machines_id == 2:
                 machines_calendar = self.calendarWidget_7_grade
+                text_browser = self.textBrowser_7_grade
             elif machines_id == 3:
                 machines_calendar = self.calendarWidget_10_grade
+                text_browser = self.textBrowser_10_grade
             elif machines_id == 4:
                 machines_calendar = self.calendarWidget_12_grade
+                text_browser = self.textBrowser_12_grade
             elif machines_id == 5:
                 machines_calendar = self.calendarWidget_12_1_grade
+                text_browser = self.textBrowser_12_1_grade
 
             machines_calendar.dates_to_paint = []
             date_loads_for_machine = get_date_load_for_knitting_machine(self.session, machines_id)
@@ -403,10 +421,11 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
             machines_calendar.paintCell = my_paint_cell.__get__(machines_calendar, MainWindow)
 
-            today_date_load = get_date_load_for_machine_on_date(self.session, machines_id, datetime.today())
+            today_date_load = get_date_load_for_machine_on_date(self.session, machines_id, date.today())
             if today_date_load is not None:
                 today_loads_machine = get_load_knitting_machines_by_date_load_id(self.session, today_date_load.id)
                 if len(today_loads_machine) > 0:
+                    info_to_widget = ""
                     for load_machine in today_loads_machine:
                         characteristic_info = get_info_about_characteristic_in_order(
                             self.session,
@@ -416,6 +435,10 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
                                     f"{characteristic_info['nomenclature_name']}, " \
                                     f"{characteristic_info['characteristic_name']}, " \
                                     f"время - {load_machine.time_references} минут"
+                        info_to_widget += load_info
+                        info_to_widget += "\n"
+
+                    text_browser.setText(info_to_widget)
 
             # machines_sheet.setRowCount(0)
             # max_row_counter = 0  # Поиск наибольшего количества строк
