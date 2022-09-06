@@ -2,10 +2,11 @@ import sys
 from datetime import date
 
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import QDate
+from PyQt5.QtCore import QDate, QTranslator
 from PyQt5.QtWidgets import QTableWidgetItem, QComboBox, QMessageBox, QTextBrowser
 
 from Interfaces import create_characteristic_widget, design, create_good, create_order_form, create_order_widget
+from helpers.create_critical_message_box import create_message_box
 
 from helpers.painting_calendar import my_paint_cell
 from processing import delete_order_and_update_date_loads
@@ -84,12 +85,15 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
             text_browser.setText(load_text_to_widget)
 
     def delete_selected_order(self):
-        current_order_row_index = self.tableWidget_orders.currentRow()
-        order_one_c_id = self.tableWidget_orders.item(current_order_row_index, 0).text()
+        message_box = QMessageBox.question(self, "Удаление заказа", "Вы точно хотите удалить заказ?",
+                                           defaultButton=QMessageBox.No)
+        if message_box == QMessageBox.Yes:
+            current_order_row_index = self.tableWidget_orders.currentRow()
+            order_one_c_id = self.tableWidget_orders.item(current_order_row_index, 0).text()
 
-        delete_order_and_update_date_loads(self.session, order_one_c_id)
-        self.get_loading_of_machines()
-        self.fill_orders_data()
+            delete_order_and_update_date_loads(self.session, order_one_c_id)
+            self.get_loading_of_machines()
+            self.fill_orders_data()
 
     def open_order_form(self):
         self.all_nomenclature = get_all_nomenclature(self.session)
@@ -135,45 +139,44 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         order_one_c_id = self.create_order_form.lineEdit_order_one_c_id.text()
 
         if order_one_c_id == '':
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
-            msg.setText("Ошибка")
-            msg.setInformativeText('Не указан номер заказа')
-            msg.setWindowTitle("Ошибка")
-            msg.exec_()
+            create_message_box("Не указан номер заказа")
         else:
-            db_order = get_order_by_one_c_id(self.session, order_one_c_id)
+            if table_with_characteristic.rowCount() == 0:
+                create_message_box("Не указаны товары")
+            else:
+                db_order = get_order_by_one_c_id(self.session, order_one_c_id)
 
-            if db_order is None:
-                db_order = create_order(self.session, order_one_c_id)
+                if db_order is None:
+                    db_order = create_order(self.session, order_one_c_id)
 
-            for row_counter in range(table_with_characteristic.rowCount()):
+                for row_counter in range(table_with_characteristic.rowCount()):
 
-                characteristic_combobox: QComboBox = table_with_characteristic.cellWidget(row_counter, 1)
-                characteristic_id = characteristic_combobox.itemData(characteristic_combobox.currentIndex())
+                    characteristic_combobox: QComboBox = table_with_characteristic.cellWidget(row_counter, 1)
+                    characteristic_id = characteristic_combobox.itemData(characteristic_combobox.currentIndex())
 
-                amount = int(table_with_characteristic.item(row_counter, 2).text())
-                db_characteristic_in_order = get_characteristic_in_order(self.session, db_order.id, characteristic_id)
+                    amount = int(table_with_characteristic.item(row_counter, 2).text())
+                    db_characteristic_in_order = get_characteristic_in_order(self.session, db_order.id,
+                                                                             characteristic_id)
 
-                if db_characteristic_in_order is not None:
-                    pass
-                else:
-                    db_characteristic_in_order = create_characteristic_in_order(
+                    if db_characteristic_in_order is not None:
+                        pass
+                    else:
+                        db_characteristic_in_order = create_characteristic_in_order(
+                            self.session,
+                            db_order.id,
+                            characteristic_id,
+                            amount
+                        )
+
+                    create_date_load_to_characteristic(
                         self.session,
-                        db_order.id,
+                        db_characteristic_in_order,
                         characteristic_id,
                         amount
                     )
-
-                create_date_load_to_characteristic(
-                    self.session,
-                    db_characteristic_in_order,
-                    characteristic_id,
-                    amount
-                )
-            self.fill_order_form(order_one_c_id)
-            self.fill_orders_data()
-            self.get_loading_of_machines()
+                self.fill_order_form(order_one_c_id)
+                self.fill_orders_data()
+                self.get_loading_of_machines()
 
     def fill_order_form(self, order_one_c_id: int):
         db_order = get_order_by_one_c_id(self.session, order_one_c_id)
@@ -440,45 +443,6 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
                     text_browser.setText(info_to_widget)
 
-            # machines_sheet.setRowCount(0)
-            # max_row_counter = 0  # Поиск наибольшего количества строк
-            # for work_data in machine_load_data:
-            #     if len(work_data["load_machine_data"]) > max_row_counter:
-            #         max_row_counter = len(work_data["load_machine_data"])
-            # column_counter = len(machine_load_data)
-            #
-            # machines_sheet.setRowCount(max_row_counter + 1)
-            # machines_sheet.setColumnCount(column_counter)
-            #
-            # column_headers = []
-            # for db_date_load in machine_load_data:
-            #     column_headers.append(db_date_load['date'].strftime('%d.%m.%Y'))
-            #
-            # machines_sheet.setHorizontalHeaderLabels(column_headers)
-            #
-            # column_counter = 0
-            # for work_date_info in machine_load_data:
-            #     total_load_item = QTableWidgetItem()
-            #     total_load_item.setData(2, work_date_info['total_load'])
-            #     machines_sheet.setItem(0, column_counter, total_load_item)
-            #     row_counter = 1
-            #     for db_load_machine in work_date_info['load_machine_data']:
-            #         load_data_item = QTableWidgetItem()
-            #         characteristic_info = get_info_about_characteristic_in_order(
-            #             self.session,
-            #             db_load_machine.characteristic_in_order_id)
-            #         load_data_item.setData(2,
-            #                                f"Заказ {characteristic_info['order_number']}, "
-            #                                f"{characteristic_info['nomenclature_name']}"
-            #                                f", {characteristic_info['characteristic_name']}, "
-            #                                f"время - {db_load_machine.time_references} минут")
-            #         machines_sheet.setItem(row_counter, column_counter, load_data_item)
-            #
-            #         row_counter += 1
-            #     column_counter += 1
-            #
-            # machines_sheet.resizeColumnsToContents()
-
     def get_all_nomenclature(self):
         nomenclatures = get_all_nomenclature(self.session)
         row_counter = 0
@@ -573,6 +537,9 @@ class CreateOrderForm(QtWidgets.QWidget, create_order_form.Ui_Form_order):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)  # Новый экземпляр QApplication
     window = MainWindow()  # Создаём объект класса ExampleApp
+    translator = QTranslator(app)
+    translator.load("qtbase_ru.qm")
+    app.installTranslator(translator)
     # File = open("SyNet.qss", 'r')
     #
     # with File:
