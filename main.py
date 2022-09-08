@@ -3,9 +3,10 @@ from datetime import date
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QDate, QTranslator
-from PyQt5.QtWidgets import QTableWidgetItem, QComboBox, QMessageBox, QTextBrowser
+from PyQt5.QtWidgets import QTableWidgetItem, QComboBox, QMessageBox, QTextBrowser, QTableWidget
 
 from Interfaces import create_characteristic_widget, design, create_good, create_order_form, create_order_widget
+from helpers.characteristic_in_order import make_dict_with_characteristics_in_order
 from helpers.create_critical_message_box import create_message_box
 
 from helpers.painting_calendar import my_paint_cell
@@ -27,7 +28,7 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.create_good_widget = None
         self.create_characteristic_widget = None
         self.create_order_widget = None
-        self.create_order_form = None
+        self.order_form = None
         self.new_good_data = None
         self.session = make_session()
         self.all_nomenclature = get_all_nomenclature(self.session)
@@ -97,46 +98,62 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def open_order_form(self):
         self.all_nomenclature = get_all_nomenclature(self.session)
-        self.create_order_form = CreateOrderForm()
+        self.order_form = CreateOrderForm()
 
-        self.create_order_form.show()
+        self.order_form.show()
         order_columns = ["Номенклатура", "Характеристика", "Количество", "Дата вязки"]
-        self.create_order_form.tableWidget_characteristics_in_order.setColumnCount(len(order_columns))
-        self.create_order_form.tableWidget_characteristics_in_order.setHorizontalHeaderLabels(order_columns)
+        self.order_form.tableWidget_characteristics_in_order.setColumnCount(len(order_columns))
+        self.order_form.tableWidget_characteristics_in_order.setHorizontalHeaderLabels(order_columns)
 
-        self.create_order_form.pushButton_add_row.clicked.connect(self.create_row_in_create_order_table)
-        self.create_order_form.pushButton_delete_row.clicked.connect(self.delete_row_in_create_order_table)
-        # self.create_order_form.pushButton_save.clicked.connect(self.create_order_from_form)
+        self.order_form.pushButton_add_row.clicked.connect(self.create_row_in_create_order_table)
+        self.order_form.pushButton_delete_row.clicked.connect(self.delete_row_in_create_order_table)
+        self.order_form.pushButton_save.clicked.connect(self.save_changes_order)
 
         current_order_row_index = self.tableWidget_orders.currentRow()
         order_one_c_id = self.tableWidget_orders.item(current_order_row_index, 0).text()
 
-        self.create_order_form.lineEdit_order_one_c_id.setText(order_one_c_id)
-        self.create_order_form.lineEdit_order_one_c_id.setEnabled(False)
+        self.order_form.lineEdit_order_one_c_id.setText(order_one_c_id)
+        self.order_form.lineEdit_order_one_c_id.setEnabled(False)
 
         order_one_c_id = int(order_one_c_id)
         self.fill_order_form(order_one_c_id)
 
+    def save_changes_order(self):
+        characteristics_in_order_table: QTableWidget = self.order_form.tableWidget_characteristics_in_order
+        order_one_c_id = self.order_form.lineEdit_order_one_c_id.text
+        db_order = get_order_by_one_c_id(self.session, order_one_c_id)
+        characteristics_in_order = get_characteristics_for_order(self.session, db_order.id)
+        characteristics_in_order = make_dict_with_characteristics_in_order(characteristics_in_order)
+        for row_counter in range(characteristics_in_order_table.rowCount()):
+            characteristic_combobox: QComboBox = characteristics_in_order_table.cellWidget(row_counter, 1)
+            characteristic_id = characteristic_combobox.itemData(characteristic_combobox.currentIndex())
+            amount = int(characteristics_in_order_table.item(row_counter, 2).text())
+
+            if characteristic_id in characteristics_in_order.keys():
+                pass
+
+
+
     def open_create_order_form(self):
         self.all_nomenclature = get_all_nomenclature(self.session)
-        self.create_order_form = CreateOrderForm()
+        self.order_form = CreateOrderForm()
 
-        self.create_order_form.show()
+        self.order_form.show()
         order_columns = ["Номенклатура", "Характеристика", "Количество", "Дата вязки"]
-        self.create_order_form.tableWidget_characteristics_in_order.setColumnCount(len(order_columns))
-        self.create_order_form.tableWidget_characteristics_in_order.setHorizontalHeaderLabels(order_columns)
+        self.order_form.tableWidget_characteristics_in_order.setColumnCount(len(order_columns))
+        self.order_form.tableWidget_characteristics_in_order.setHorizontalHeaderLabels(order_columns)
 
-        self.create_order_form.pushButton_add_row.clicked.connect(self.create_row_in_create_order_table)
-        self.create_order_form.pushButton_delete_row.clicked.connect(self.delete_row_in_create_order_table)
-        self.create_order_form.pushButton_save.clicked.connect(self.create_order_from_form)
+        self.order_form.pushButton_add_row.clicked.connect(self.create_row_in_create_order_table)
+        self.order_form.pushButton_delete_row.clicked.connect(self.delete_row_in_create_order_table)
+        self.order_form.pushButton_save.clicked.connect(self.create_order_from_form)
 
         self.create_row_in_create_order_table()
 
-        self.create_order_form.tableWidget_characteristics_in_order.resizeColumnsToContents()
+        self.order_form.tableWidget_characteristics_in_order.resizeColumnsToContents()
 
     def create_order_from_form(self):
-        table_with_characteristic = self.create_order_form.tableWidget_characteristics_in_order
-        order_one_c_id = self.create_order_form.lineEdit_order_one_c_id.text()
+        table_with_characteristic = self.order_form.tableWidget_characteristics_in_order
+        order_one_c_id = self.order_form.lineEdit_order_one_c_id.text()
 
         if order_one_c_id == '':
             create_message_box("Не указан номер заказа")
@@ -180,13 +197,13 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def fill_order_form(self, order_one_c_id: int):
         db_order = get_order_by_one_c_id(self.session, order_one_c_id)
-        self.create_order_form.lineEdit_order_one_c_id.text = order_one_c_id
+        self.order_form.lineEdit_order_one_c_id.text = order_one_c_id
         order_columns = ["Номенклатура", "Характеристика", "Количество", "Дата вязки"]
-        self.create_order_form.tableWidget_characteristics_in_order.setColumnCount(len(order_columns))
-        self.create_order_form.tableWidget_characteristics_in_order.setHorizontalHeaderLabels(order_columns)
+        self.order_form.tableWidget_characteristics_in_order.setColumnCount(len(order_columns))
+        self.order_form.tableWidget_characteristics_in_order.setHorizontalHeaderLabels(order_columns)
 
         db_characteristics_for_order = get_characteristics_for_order(self.session, db_order.id)
-        self.create_order_form.tableWidget_characteristics_in_order.setRowCount(len(db_characteristics_for_order))
+        self.order_form.tableWidget_characteristics_in_order.setRowCount(len(db_characteristics_for_order))
 
         row_counter = 0
         for current_characteristic in db_characteristics_for_order:
@@ -201,7 +218,7 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
             article_index = select_article_combobox.findText(characteristic_info["nomenclature_name"])
             select_article_combobox.setCurrentIndex(article_index)
 
-            self.create_order_form.tableWidget_characteristics_in_order.setCellWidget(
+            self.order_form.tableWidget_characteristics_in_order.setCellWidget(
                 row_counter,
                 0,
                 select_article_combobox
@@ -221,14 +238,14 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
             characteristic_index = select_characteristic_combobox.findData(current_characteristic.characteristic_id)
             select_characteristic_combobox.setCurrentIndex(characteristic_index)
 
-            self.create_order_form.tableWidget_characteristics_in_order.setCellWidget(
+            self.order_form.tableWidget_characteristics_in_order.setCellWidget(
                 row_counter,
                 1,
                 select_characteristic_combobox
             )
             amount_item = QTableWidgetItem()
             amount_item.setData(2, characteristic_info["amount"])
-            self.create_order_form.tableWidget_characteristics_in_order.setItem(
+            self.order_form.tableWidget_characteristics_in_order.setItem(
                 row_counter,
                 2,
                 amount_item
@@ -237,22 +254,22 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
             deadline = get_deadline_for_characteristic_in_order(self.session, current_characteristic.id)
             deadline_item = QTableWidgetItem()
             deadline_item.setData(2, deadline.strftime("%d.%m.%y"))
-            self.create_order_form.tableWidget_characteristics_in_order.setItem(
+            self.order_form.tableWidget_characteristics_in_order.setItem(
                 row_counter,
                 3,
                 deadline_item
             )
 
             row_counter += 1
-        self.create_order_form.tableWidget_characteristics_in_order.resizeColumnsToContents()
+        self.order_form.tableWidget_characteristics_in_order.resizeColumnsToContents()
 
     def delete_row_in_create_order_table(self):
-        row_count = self.create_order_form.tableWidget_characteristics_in_order.currentRow()
-        self.create_order_form.tableWidget_characteristics_in_order.removeRow(row_count)
+        row_count = self.order_form.tableWidget_characteristics_in_order.currentRow()
+        self.order_form.tableWidget_characteristics_in_order.removeRow(row_count)
 
     def create_row_in_create_order_table(self):
-        row_count = self.create_order_form.tableWidget_characteristics_in_order.rowCount()
-        self.create_order_form.tableWidget_characteristics_in_order.insertRow(row_count)
+        row_count = self.order_form.tableWidget_characteristics_in_order.rowCount()
+        self.order_form.tableWidget_characteristics_in_order.insertRow(row_count)
         new_row_index = row_count
         select_article_combobox = QComboBox()
         select_article_combobox.setEditable(True)
@@ -261,7 +278,7 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
             select_article_combobox.addItem(nomenclature.name, nomenclature.id)
         select_article_combobox.setCurrentIndex(-1)
 
-        self.create_order_form.tableWidget_characteristics_in_order.setCellWidget(
+        self.order_form.tableWidget_characteristics_in_order.setCellWidget(
             new_row_index,
             0,
             select_article_combobox
@@ -270,7 +287,7 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
     def fill_data_about_characteristics_to_nomenclature(self):
         combobox = self.sender()
-        current_row = self.create_order_form.tableWidget_characteristics_in_order.currentRow()
+        current_row = self.order_form.tableWidget_characteristics_in_order.currentRow()
         nomenclature_id = combobox.itemData(combobox.currentIndex())
         db_characteristics = get_characteristic_for_good(self.session, nomenclature_id)
 
@@ -281,12 +298,12 @@ class MainWindow(QtWidgets.QMainWindow, design.Ui_MainWindow):
             select_characteristic_combobox.addItem(characteristic.name, characteristic.id)
         select_characteristic_combobox.setCurrentIndex(-1)
 
-        self.create_order_form.tableWidget_characteristics_in_order.setCellWidget(
+        self.order_form.tableWidget_characteristics_in_order.setCellWidget(
             current_row,
             1,
             select_characteristic_combobox
         )
-        self.create_order_form.tableWidget_characteristics_in_order.resizeColumnsToContents()
+        self.order_form.tableWidget_characteristics_in_order.resizeColumnsToContents()
 
     def fill_columns_to_filter(self):
         columns = ["Номенклатура", "Характеристика"]
